@@ -38,7 +38,7 @@ export function AdminHeader({ title, description }: AdminHeaderProps) {
   )
 
   return (
-    <header className="w-full bg-card border-b border-border sticky top-14 lg:top-0 z-30">
+    <header className="w-full bg-card border-b border-border sticky top-16 lg:top-0 z-30">
       <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 w-full gap-2 sm:gap-4">
         <div className="min-w-0 flex-1">
           <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate">{title}</h2>

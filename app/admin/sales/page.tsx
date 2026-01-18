@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AdminHeader } from "@/components/admin-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -206,10 +205,8 @@ export default function SalesPage() {
   }
 
   return (
-    <div>
-      <AdminHeader title="Ventas" description="Manage and track all sales transactions" />
-
-      <div className="p-4 sm:p-6">
+    <div className="min-h-screen">
+      <div className="p-4 lg:p-6 space-y-6">
         {/* Summary Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <Card className="p-4">

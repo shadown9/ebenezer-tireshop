@@ -22,7 +22,7 @@ export default function AdminLayout({
     <AdminAuthGuard>
       <div className="flex min-h-screen bg-background overflow-x-hidden">
         <AdminSidebar />
-        <main className="flex-1 w-full pb-safe overflow-x-hidden">{children}</main>
+        <main className="flex-1 w-full pb-safe overflow-x-hidden pt-16 lg:pt-0">{children}</main>
       </div>
     </AdminAuthGuard>
   )

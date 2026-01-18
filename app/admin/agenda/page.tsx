@@ -3,17 +3,16 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { AdminHeader } from "@/components/admin-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Calendar, Clock, User, Car, CheckCircle, XCircle, AlertCircle, Loader } from "lucide-react"
+import { Calendar, Clock, User, Car, CheckCircle, XCircle, AlertCircle, Loader, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { Appointment, AppointmentStatus } from "@/lib/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useAppointments, updateAppointment as updateAppointmentInFirebase } from "@/lib/firebase-hooks"
+import { useAppointments, updateAppointment as updateAppointmentInFirebase, deleteAppointment } from "@/lib/firebase-hooks"
 import { notificationHelpers } from "@/lib/notification-system"
 
 const statusConfig = {
@@ -84,7 +83,10 @@ function AppointmentCard({ appointment, onStatusChange }: { appointment: Appoint
   return (
     <>
       <Card
-        className="cursor-pointer hover:shadow-md transition-shadow"
+        className={`cursor-pointer transition-all duration-300 hover:shadow-lg ${appointment.status === "pending"
+          ? "border-l-4 border-l-yellow-500 shadow-md ring-1 ring-yellow-500/20 bg-yellow-50/30"
+          : "hover:border-primary/50"
+          }`}
         onClick={() => setSelectedAppointment(appointment)}
       >
         <CardHeader className="pb-2 sm:pb-3">
@@ -103,7 +105,7 @@ function AppointmentCard({ appointment, onStatusChange }: { appointment: Appoint
               </div>
             </div>
             <Badge
-              variant={statusConfig[appointment.status].variant}
+              variant={statusConfig[appointment.status].variant as "outline" | "default" | "secondary" | "destructive" | null | undefined}
               className="flex items-center gap-1 whitespace-nowrap self-start sm:self-auto"
             >
               <StatusIcon className="h-3 w-3 flex-shrink-0" />
@@ -125,6 +127,7 @@ function AppointmentCard({ appointment, onStatusChange }: { appointment: Appoint
             {appointment.services.map((service, idx) => (
               <div key={idx} className="text-xs sm:text-sm text-muted-foreground">
                 {service.serviceName}
+                {/* @ts-ignore */}
                 {service.rotorCount && <span className="ml-1">({service.rotorCount} Rotors)</span>}
               </div>
             ))}
@@ -176,6 +179,22 @@ function AppointmentCard({ appointment, onStatusChange }: { appointment: Appoint
                 Haz clic para ver más opciones
               </div>
             )}
+            <div className="col-span-2 flex justify-end pt-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (confirm("¿Estás seguro de que quieres eliminar esta cita?")) {
+                    deleteAppointment(appointment.id)
+                    toast({ title: "Cita eliminada" })
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -411,12 +430,8 @@ export default function AgendaPage() {
   }
 
   return (
-    <div>
-      <div className="pt-14 lg:pt-0">
-        <AdminHeader title="Agenda" description="Manage appointments and schedule" />
-      </div>
-
-      <div className="p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen pb-20">
+      <div className="p-4 lg:p-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
           <Card>
             <CardHeader className="pb-2 p-3 sm:p-4 lg:p-6">

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AdminHeader } from "@/components/admin-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -250,10 +249,8 @@ export default function UsersPage() {
   }
 
   return (
-    <div>
-      <AdminHeader title="Gestión de Usuarios" description="Administra usuarios, roles y permisos del sistema" />
-
-      <div className="p-6">
+    <div className="min-h-screen">
+      <div className="p-4 lg:p-6 space-y-6">
         <Card className="mb-6 bg-blue-50 border-blue-200">
           <CardContent className="pt-6">
             <h3 className="font-semibold mb-2 flex items-center gap-2">

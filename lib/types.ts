@@ -156,3 +156,26 @@ export interface Notification {
   expiresAt?: string
   metadata?: Record<string, any>
 }
+
+export interface SaleItem {
+  product_name: string
+  quantity: number
+  unit_price: number
+  cost_price?: number
+  total_price: number
+  type?: "tire" | "service" | "part"
+}
+
+export interface Sale {
+  id: string
+  ticket_number: string
+  sale_date: string
+  customer_name?: string
+  sale_items: SaleItem[]
+  total_amount: number
+  payment_method: "cash" | "card" | "transfer"
+  notes?: string
+  created_at: string
+  created_by?: string
+}
+

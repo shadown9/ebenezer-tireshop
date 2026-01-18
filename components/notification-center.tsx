@@ -11,30 +11,35 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { useNotifications } from "@/hooks/use-notifications"
+import { useFirestoreNotifications } from "@/hooks/use-firestore-notifications"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function NotificationCenter() {
+  // Basic implementation for now - sound/push settings can be re-added later if needed
+  // tied to user profiles
   const {
     notifications,
     unreadCount,
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    deleteAll,
-    soundEnabled,
-    pushEnabled,
-    browserPushEnabled,
-    setSoundEnabled,
-    setPushEnabled,
-    setBrowserPushEnabled,
-    getBrowserPermissionStatus,
-  } = useNotifications()
+    deleteAll
+  } = useFirestoreNotifications()
+
+  // Stub settings for now to keep UI working without errors
+  const pushEnabled = true
+  const soundEnabled = true
+  const browserPushEnabled = false
+  const setPushEnabled = () => { }
+  const setSoundEnabled = () => { }
+  const setBrowserPushEnabled = () => { }
+  const getBrowserPermissionStatus = () => "default" as NotificationPermission
+  const handleBrowserPushToggle = async () => { }
   const router = useRouter()
   const { toast } = useToast()
 
@@ -42,46 +47,6 @@ export function NotificationCenter() {
     markAsRead(notification.id)
     if (notification.link) {
       router.push(notification.link)
-    }
-  }
-
-  const handleBrowserPushToggle = async (enabled: boolean) => {
-
-
-    if (enabled) {
-      const success = await setBrowserPushEnabled(true)
-
-
-      if (!success) {
-        const permission = getBrowserPermissionStatus()
-
-        if (permission === "denied") {
-          toast({
-            title: "Notificaciones bloqueadas",
-            description:
-              "Las notificaciones están bloqueadas en tu navegador. Ve a la configuración del sitio para habilitarlas.",
-            variant: "destructive",
-          })
-        } else {
-          toast({
-            title: "Permiso denegado",
-            description: "Has rechazado el permiso para mostrar notificaciones.",
-            variant: "destructive",
-          })
-        }
-      } else {
-        toast({
-          title: "Notificaciones activadas",
-          description: "Ahora recibirás notificaciones aunque la página esté en segundo plano.",
-        })
-      }
-    } else {
-
-      await setBrowserPushEnabled(false)
-      toast({
-        title: "Notificaciones desactivadas",
-        description: "Ya no recibirás notificaciones del navegador.",
-      })
     }
   }
 

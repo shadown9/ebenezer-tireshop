@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ShoppingCart, ClipboardList, Banknote, Settings, LogOut, TrendingUp, CreditCard } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { useSales } from "@/lib/firebase-hooks"
 
 interface LoggedSale {
     id: string
@@ -18,7 +19,7 @@ interface LoggedSale {
 
 export default function POSDashboard() {
     const router = useRouter()
-    const [loading, setLoading] = useState(true)
+    const { sales, loading } = useSales()
     const [stats, setStats] = useState({
         total: 0,
         cash: 0,
@@ -28,63 +29,49 @@ export default function POSDashboard() {
     })
 
     useEffect(() => {
-        fetchTodayStats()
-    }, [])
-
-    const fetchTodayStats = async () => {
-        try {
-            setLoading(true)
-            const response = await fetch("/api/sales")
-            if (!response.ok) throw new Error("Failed to fetch sales")
-
-            const sales: LoggedSale[] = await response.json()
-
-            const today = new Date().toISOString().split("T")[0]
-            const todaysSalesData = sales.filter(sale => {
-                const saleDate = sale.sale_date ? sale.sale_date.split("T")[0] : ""
-                return saleDate === today
-            })
-
-            const newStats = {
-                total: 0,
-                cash: 0,
-                card: 0,
-                transfer: 0,
-                mixed: 0
-            }
-
-            todaysSalesData.forEach(sale => {
-                const amount = Number(sale.total_amount)
-                newStats.total += amount
-                const method = (sale.payment_method || 'cash').toLowerCase()
-                if (method === 'cash') newStats.cash += amount
-                else if (method === 'card') newStats.card += amount
-                else if (method === 'transfer') newStats.transfer += amount
-                else newStats.mixed += amount
-            })
-
-            setStats(newStats)
-        } catch (error) {
-            console.error("Error loading stats:", error)
-        } finally {
-            setLoading(false)
+        if (!loading) {
+            calculateStats()
         }
+    }, [sales, loading])
+
+    const calculateStats = () => {
+        // Get local date string YYYY-MM-DD
+        const today = new Date()
+        const todayStr = format(today, "yyyy-MM-dd")
+
+        const todaysSalesData = sales.filter(sale => {
+            if (!sale.sale_date) return false
+            // Handle both ISO strings and YYYY-MM-DD
+            const saleDateStr = sale.sale_date.includes("T")
+                ? format(new Date(sale.sale_date), "yyyy-MM-dd")
+                : sale.sale_date
+            return saleDateStr === todayStr
+        })
+
+        const newStats = {
+            total: 0,
+            cash: 0,
+            card: 0,
+            transfer: 0,
+            mixed: 0
+        }
+
+        todaysSalesData.forEach(sale => {
+            const amount = Number(sale.total_amount)
+            newStats.total += amount
+            const method = (sale.payment_method || 'cash').toLowerCase()
+            if (method === 'cash') newStats.cash += amount
+            else if (method === 'card' || method === 'tarjeta') newStats.card += amount
+            else if (method === 'transfer' || method === 'transferencia') newStats.transfer += amount
+            else newStats.mixed += amount
+        })
+
+        setStats(newStats)
     }
+
 
     return (
         <div className="min-h-screen bg-white text-slate-900 pb-20">
-            {/* Top Status Bar */}
-            <div className="bg-slate-50 border-b p-4 flex justify-between items-center sticky top-0 z-10">
-                <div>
-                    <h1 className="text-lg font-bold">Ebenezer Tire Shop</h1>
-                    <p className="text-sm text-slate-500 capitalize">
-                        {format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}
-                    </p>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => router.push("/admin")}>
-                    <LogOut className="h-5 w-5 text-slate-500" />
-                </Button>
-            </div>
 
             {/* Main Stats Card */}
             <div className="p-4 space-y-4">

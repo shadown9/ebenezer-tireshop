@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useTires, useServices } from "@/lib/firebase-hooks"
+import { useTires, useServices, addSale } from "@/lib/firebase-hooks"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -96,32 +96,26 @@ export default function NewSalePage() {
     const handleCheckout = async () => {
         setIsSubmitting(true)
         try {
-            const saleData = {
+            await addSale({
                 sale_date: new Date().toISOString(),
-                customer_name: "Cliente General", // Could add customer selection later
+                customer_name: "Cliente General",
                 sale_items: cart.map(item => ({
                     product_name: item.name,
                     quantity: item.quantity,
                     unit_price: item.price,
-                    cost_price: item.costPrice || 0, // Ensure snake_case for DB if needed, but we store JSON so it's fine. keeping strict for clarity
-                    total_price: item.price * item.quantity
+                    cost_price: item.costPrice || 0,
+                    total_price: item.price * item.quantity,
+                    type: item.type
                 })),
                 total_amount: cartTotal,
-                payment_method: paymentMethod,
-                notes: `Pago: $${cashGiven}`
-            }
-
-            const res = await fetch("/api/sales", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(saleData)
+                payment_method: paymentMethod as "cash" | "card" | "transfer",
+                notes: paymentMethod === "cash" ? `Efectivo recibido: $${cashGiven}` : undefined
             })
-
-            if (!res.ok) throw new Error("Sale failed")
 
             toast({ title: "Venta Completada", description: "La venta se ha registrado correctamente." })
             router.push("/admin/pos")
         } catch (error) {
+            console.error("Error saving sale:", error)
             toast({ title: "Error", description: "No se pudo completar la venta", variant: "destructive" })
         } finally {
             setIsSubmitting(false)
@@ -130,20 +124,7 @@ export default function NewSalePage() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
-            {/* Header */}
-            <div className="bg-white border-b p-4 flex items-center gap-4 sticky top-0 z-10">
-                <Button variant="ghost" size="icon" onClick={() => step === 1 ? router.push("/admin/pos") : setStep(1)}>
-                    <ChevronLeft className="h-6 w-6" />
-                </Button>
-                <h1 className="font-bold text-lg flex-1">
-                    {step === 1 ? "Nueva Venta" : "Confirmar Pago"}
-                </h1>
-                {step === 1 && cart.length > 0 && (
-                    <Button size="sm" onClick={() => setStep(2)}>
-                        ${cartTotal.toFixed(2)} <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                )}
-            </div>
+
 
             {step === 1 ? (
                 <div className="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
@@ -222,12 +203,10 @@ export default function NewSalePage() {
             ) : (
                 // Step 2: Checkout
                 <div className="p-4 flex flex-col gap-6 max-w-md mx-auto w-full">
-                    <Card>
-                        <CardContent className="p-6 text-center bg-slate-900 text-white rounded-xl">
-                            <p className="text-slate-400 text-sm uppercase tracking-wide">Total a Pagar</p>
-                            <h1 className="text-5xl font-black mt-2">${cartTotal.toFixed(2)}</h1>
-                        </CardContent>
-                    </Card>
+                    <div className="p-6 text-center bg-slate-900 text-white rounded-xl shadow-lg">
+                        <p className="text-slate-400 text-sm uppercase tracking-wide">Total a Pagar</p>
+                        <h1 className="text-5xl font-black mt-2">${cartTotal.toFixed(2)}</h1>
+                    </div>
 
                     <div className="space-y-3">
                         <h3 className="font-bold text-slate-700">Método de Pago</h3>

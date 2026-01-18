@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AdminHeader } from "@/components/admin-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -87,13 +86,8 @@ export default function AuditPage() {
   const uniqueResources = Array.from(new Set(logs.map((log) => log.resource)))
 
   return (
-    <div>
-      <AdminHeader
-        title="Registro de Auditoría"
-        description="Historial completo de actividad del sistema para control anti-fraude"
-      />
-
-      <div className="p-6">
+    <div className="min-h-screen">
+      <div className="p-4 lg:p-6 space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card>

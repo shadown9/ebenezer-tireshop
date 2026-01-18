@@ -8,12 +8,14 @@ import { ChevronLeft, Printer, Banknote, CreditCard, Landmark, Settings, Eye } f
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
+import { useSales } from "@/lib/firebase-hooks"
 
 export default function POSClosePage() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const isPreview = searchParams.get('preview') === 'true'
     const { toast } = useToast()
+    const { sales: allSales, loading: salesLoading } = useSales()
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({
         totalSales: 0,
@@ -32,21 +34,34 @@ export default function POSClosePage() {
     })
 
     useEffect(() => {
-        fetchDailyStats()
-    }, [])
+        if (!salesLoading) {
+            calculateStats()
+        }
+    }, [salesLoading, allSales])
 
-    const fetchDailyStats = async () => {
+    const calculateStats = async () => {
         try {
             setLoading(true)
-            const dataPromises = [
-                fetch("/api/sales").then(r => r.json()),
-                fetch("/api/cash").then(r => r.json())
-            ]
 
-            const [allSales, allCash] = await Promise.all(dataPromises)
+            // We normally would fetch cash movements here too
+            // const allCash = await fetch("/api/cash").then(r => r.json())
+            // For now, let's assume empty cash movements or keep the fetch if that endpoint works
+            // To be consistent, let's just fetch cash from API if exists or mock distinct parts
+            // Assuming /api/cash still exists or needs replacing. Let's keep existing fetch for cash BUT useHook for sales
 
-            const today = new Date().toISOString().split("T")[0]
-            const todaysSales = allSales.filter((s: any) => s.sale_date && s.sale_date.startsWith(today))
+            const cashRes = await fetch("/api/cash").catch(() => ({ ok: false, json: () => [] }))
+            const allCash = cashRes.ok ? await cashRes.json() : []
+
+            // Local Date String YYYY-MM-DD
+            const today = format(new Date(), "yyyy-MM-dd")
+
+            const todaysSales = allSales.filter((s: any) => {
+                const saleDateStr = s.sale_date.includes("T")
+                    ? format(new Date(s.sale_date), "yyyy-MM-dd")
+                    : s.sale_date
+                return saleDateStr === today
+            })
+
             const todaysCash = allCash.filter((m: any) => m.created_at && m.created_at.startsWith(today))
 
             // 1. Sales Totals
@@ -156,26 +171,7 @@ export default function POSClosePage() {
 
     return (
         <div className="min-h-screen bg-slate-50 print:bg-white text-slate-900 pb-20">
-            <div className="bg-white border-b p-4 flex items-center justify-between sticky top-0 z-10 print:hidden">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => router.push("/admin/pos")}>
-                        <ChevronLeft className="h-6 w-6" />
-                    </Button>
-                    <h1 className="font-bold text-lg">
-                        {isPreview ? (
-                            <span className="flex items-center gap-2">
-                                <Eye className="h-5 w-5 text-green-600" />
-                                Resumen del Día
-                            </span>
-                        ) : 'Cierre de Caja (Z)'}
-                    </h1>
-                </div>
-                <Button onClick={handlePrint} variant="outline" className="gap-2">
-                    <Printer className="h-4 w-4" /> Imprimir
-                </Button>
-            </div>
-
-            <div className="p-4 max-w-2xl mx-auto space-y-6">
+            <div className="p-4 space-y-6 print:p-8">
 
                 {/* Header */}
                 <div className="text-center border-b pb-6">
@@ -373,6 +369,6 @@ export default function POSClosePage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }

@@ -366,3 +366,56 @@ export async function getAppointmentByTrackingNumber(trackingNumber: string): Pr
     ...doc.data(),
   } as Appointment
 }
+
+// Sales Functions
+import type { Sale, SaleItem } from "./types"
+
+// Hook to get sales with real-time updates
+export function useSales() {
+  const [sales, setSales] = useState<Sale[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const q = query(collection(db, "sales"))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const salesData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Sale[]
+      setSales(salesData)
+      setLoading(false)
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  return { sales, loading }
+}
+
+// Generate unique ticket number
+function generateTicketNumber(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+  let result = ""
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+// Add a new sale
+export async function addSale(sale: Omit<Sale, "id" | "ticket_number" | "created_at">) {
+  const saleData: Omit<Sale, "id"> = {
+    ...sale,
+    ticket_number: generateTicketNumber(),
+    created_at: new Date().toISOString(),
+  }
+
+  const docRef = await addDoc(collection(db, "sales"), saleData)
+  return docRef.id
+}
+
+// Delete a sale (void)
+export async function deleteSale(id: string) {
+  await deleteDoc(doc(db, "sales", id))
+}
+

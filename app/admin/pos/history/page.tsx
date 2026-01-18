@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
-import { ChevronLeft, Trash2, AlertTriangle, Printer } from "lucide-react"
+import { es } from "date-fns/locale"
+import { Search, Trash2, AlertTriangle, Printer, FileText, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,112 +20,156 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-
-interface SaleItem {
-    product_name: string
-    quantity: number
-    unit_price: number
-    total_price: number
-    type?: "tire" | "service"
-}
-
-interface Sale {
-    id: string
-    sale_date: string
-    sale_items: SaleItem[]
-    total_amount: number
-    payment_method: string
-    created_at: string
-}
+import { useSales, deleteSale } from "@/lib/firebase-hooks"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function POSHistoryPage() {
     const router = useRouter()
     const { toast } = useToast()
-    const [sales, setSales] = useState<Sale[]>([])
-    const [loading, setLoading] = useState(true)
+    const { sales: allSales, loading } = useSales()
     const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
+    const [searchQuery, setSearchQuery] = useState("")
+    const [viewMode, setViewMode] = useState<"today" | "all">("today")
 
-    useEffect(() => {
-        fetchTodaySales()
-    }, [])
+    // Get today's local date string YYYY-MM-DD
+    const today = format(new Date(), "yyyy-MM-dd")
 
-    const fetchTodaySales = async () => {
-        try {
-            setLoading(true)
-            const res = await fetch("/api/sales")
-            if (!res.ok) throw new Error("Failed to fetch")
-            const allSales: Sale[] = await res.json()
+    // Filter and sort sales based on mode and search
+    const filteredSales = allSales
+        .filter(s => {
+            // Filter by view mode (today only or all)
+            if (viewMode === "today") {
+                const saleDateStr = s.sale_date.includes("T")
+                    ? format(new Date(s.sale_date), "yyyy-MM-dd")
+                    : s.sale_date
 
-            // Filter for today
-            const today = new Date().toISOString().split("T")[0]
-            const todaysSales = allSales.filter(s => s.sale_date.startsWith(today))
+                if (saleDateStr !== today) return false
+            }
 
-            // Sort by newest first (assuming created_at exists, or use sale_date/id)
-            todaysSales.sort((a, b) => new Date(b.created_at || b.sale_date).getTime() - new Date(a.created_at || a.sale_date).getTime())
+            // Filter by search query (multiple criteria)
+            if (searchQuery.trim()) {
+                const query = searchQuery.toLowerCase().replace("#", "").replace("$", "")
 
-            setSales(todaysSales)
-        } catch (error) {
-            console.error("Error fetching sales:", error)
-            toast({ title: "Error", description: "No se pudo cargar el historial", variant: "destructive" })
-        } finally {
-            setLoading(false)
-        }
-    }
+                // Search by ticket number
+                const ticketMatch = (s.ticket_number || s.id.slice(0, 6)).toLowerCase().includes(query)
+
+                // Search by product name (what they bought)
+                const productMatch = s.sale_items?.some((item: any) =>
+                    item.product_name?.toLowerCase().includes(query)
+                )
+
+                // Search by amount (approximate)
+                const amountMatch = s.total_amount?.toString().includes(query)
+
+                // Search by date (dd/mm format)
+                const dateStr = format(new Date(s.sale_date), "dd/MM/yyyy")
+                const dateMatch = dateStr.includes(query)
+
+                return ticketMatch || productMatch || amountMatch || dateMatch
+            }
+
+            return true
+        })
+        .sort((a, b) => new Date(b.created_at || b.sale_date).getTime() - new Date(a.created_at || a.sale_date).getTime())
 
     const handleVoidSale = async () => {
         if (!saleToDelete) return
 
         try {
-            const res = await fetch(`/api/sales/${saleToDelete}`, { method: "DELETE" })
-            if (!res.ok) throw new Error("Delete failed")
-
+            await deleteSale(saleToDelete)
             toast({ title: "Venta Anulada", description: "La venta ha sido eliminada del registro." })
-            setSales(prev => prev.filter(s => s.id !== saleToDelete))
             setSaleToDelete(null)
         } catch (error) {
+            console.error("Error voiding sale:", error)
             toast({ title: "Error", description: "No se pudo anular la venta", variant: "destructive" })
         }
     }
 
     return (
         <div className="min-h-screen bg-slate-50">
-            {/* Header */}
-            <div className="bg-white border-b p-4 flex items-center gap-4 sticky top-0 z-10">
-                <Button variant="ghost" size="icon" onClick={() => router.push("/admin/pos")}>
-                    <ChevronLeft className="h-6 w-6" />
-                </Button>
-                <h1 className="font-bold text-lg">Historial de Hoy</h1>
-            </div>
-
             <div className="p-4 space-y-4 pb-20">
+                {/* Search Bar */}
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                        type="text"
+                        placeholder="Buscar por producto, fecha (15/01), monto o # ticket"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 h-12 text-base"
+                    />
+                </div>
+
+                {/* View Mode Tabs */}
+                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "today" | "all")}>
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="today" className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Hoy ({allSales.filter(s => {
+                                const saleDateStr = s.sale_date.includes("T")
+                                    ? format(new Date(s.sale_date), "yyyy-MM-dd")
+                                    : s.sale_date
+                                return saleDateStr === today
+                            }).length})
+                        </TabsTrigger>
+                        <TabsTrigger value="all" className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Todas ({allSales.length})
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+
+                {/* Results count */}
+                {searchQuery && (
+                    <p className="text-sm text-slate-500">
+                        {filteredSales.length} factura{filteredSales.length !== 1 ? "s" : ""} encontrada{filteredSales.length !== 1 ? "s" : ""}
+                    </p>
+                )}
+
+                {/* Sales List */}
                 {loading ? (
                     <div className="text-center p-10 text-slate-400">Cargando...</div>
-                ) : sales.length === 0 ? (
+                ) : filteredSales.length === 0 ? (
                     <div className="text-center p-10 text-slate-400">
-                        <p>No hay ventas registradas hoy.</p>
+                        {searchQuery ? (
+                            <p>No se encontraron facturas con &quot;{searchQuery}&quot;</p>
+                        ) : viewMode === "today" ? (
+                            <p>No hay ventas registradas hoy.</p>
+                        ) : (
+                            <p>No hay ventas registradas.</p>
+                        )}
                     </div>
                 ) : (
-                    sales.map(sale => (
+                    filteredSales.map(sale => (
                         <Card key={sale.id} className="overflow-hidden">
                             <div className="bg-slate-100 px-4 py-2 flex justify-between items-center text-sm text-slate-500">
+                                <div className="flex items-center gap-3">
+                                    {/* Ticket Number - Prominent */}
+                                    <span className="font-mono font-bold text-slate-700 bg-white px-2 py-0.5 rounded border">
+                                        #{sale.ticket_number || sale.id.slice(0, 6)}
+                                    </span>
+                                    <span className="text-slate-400">
+                                        {format(new Date(sale.created_at || sale.sale_date), "dd/MM/yy h:mm a", { locale: es })}
+                                    </span>
+                                </div>
                                 <div className="flex items-center gap-2">
-                                    <span>{format(new Date(sale.created_at || sale.sale_date), "h:mm a")}</span>
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-6 w-6"
+                                        className="h-7 w-7"
                                         onClick={() => router.push(`/admin/pos/ticket/${sale.id}`)}
+                                        title="Ver/Imprimir factura"
                                     >
-                                        <Printer className="h-4 w-4 text-slate-400" />
+                                        <Printer className="h-4 w-4" />
                                     </Button>
+                                    <Badge variant="outline" className="uppercase text-xs bg-white">
+                                        {sale.payment_method}
+                                    </Badge>
                                 </div>
-                                <Badge variant="outline" className="uppercase text-xs bg-white">
-                                    {sale.payment_method}
-                                </Badge>
                             </div>
                             <CardContent className="p-4">
                                 <div className="space-y-2 mb-4">
-                                    {sale.sale_items.map((item, idx) => (
+                                    {sale.sale_items.map((item: any, idx: number) => (
                                         <div key={idx} className="flex justify-between text-sm">
                                             <span className="text-slate-700">
                                                 <span className="font-bold text-slate-900">{item.quantity}x</span> {item.product_name}
@@ -137,15 +183,24 @@ export default function POSHistoryPage() {
                                         <p className="text-xs text-slate-400 uppercase">Total Venta</p>
                                         <p className="text-2xl font-black text-slate-900">${Number(sale.total_amount).toFixed(2)}</p>
                                     </div>
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => setSaleToDelete(sale.id)}
-                                        className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 border shadow-none"
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Anular
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => router.push(`/admin/pos/ticket/${sale.id}`)}
+                                        >
+                                            <Printer className="h-4 w-4 mr-2" />
+                                            Ver Factura
+                                        </Button>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => setSaleToDelete(sale.id)}
+                                            className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 border shadow-none"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

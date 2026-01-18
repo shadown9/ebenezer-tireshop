@@ -19,9 +19,10 @@ import {
   LogOut,
   ShoppingCart,
   Monitor,
+  ChevronLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import Image from "next/image"
 import { hasPermission, ROLE_NAMES } from "@/lib/permissions"
 
@@ -218,6 +219,25 @@ export function AdminSidebar() {
     <>
       <div className="lg:hidden print:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between p-3">
+          {/* Left side: Back button (conditional) + Logo */}
+          <div className="flex items-center gap-2">
+            {pathname !== '/admin' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => window.history.back()}
+                className="border-gray-300"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
+            <div className="relative w-6 h-6">
+              <Image src="/logo.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" />
+            </div>
+            <span className="font-bold text-gray-900">Ebenezer Tireshop</span>
+          </div>
+
+          {/* Right side: Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button size="icon" variant="outline" className="border-gray-300 bg-transparent">
@@ -225,16 +245,10 @@ export function AdminSidebar() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-0 bg-white">
+              <SheetTitle className="sr-only">Menu de Navegación</SheetTitle>
               <SidebarContent pathname={pathname} onNavigate={() => setIsOpen(false)} />
             </SheetContent>
           </Sheet>
-          <div className="flex items-center gap-2">
-            <div className="relative w-6 h-6">
-              <Image src="/logo.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" />
-            </div>
-            <span className="font-bold text-gray-900">Ebenezer Tireshop</span>
-          </div>
-          <div className="w-10" />
         </div>
       </div>
 

@@ -1,45 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { format } from "date-fns"
 import { Printer, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
+import { useSales } from "@/lib/firebase-hooks"
 
 export default function TicketPage() {
     const router = useRouter()
     const params = useParams()
-    const { toast } = useToast()
-    const [sale, setSale] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
+    const { sales, loading } = useSales()
 
-    useEffect(() => {
-        fetchSale()
-    }, [])
-
-    const fetchSale = async () => {
-        try {
-            const res = await fetch(`/api/sales/${params.id}`) // We need a GET endpoint for single sale, reusing current if available or filtering
-            // Actually /api/sales/[id] currently supports DELETE and PUT. We need GET.
-            // Wait, standard CRUD usually puts GET in [id]. Let's check `app/api/sales/[id]/route.ts`. 
-            // If it doesn't have GET, we might need to add it or fetch all and filter (inefficient but safe for now).
-            // Let's assume for now we might need to fallback or add it. 
-            // To be expeditious, I'll fetch ALL and filter since I already have that endpoint working for History.
-
-            const allRes = await fetch("/api/sales")
-            const allSales = await allRes.json()
-            const found = allSales.find((s: any) => s.id == params.id)
-
-            if (found) setSale(found)
-            else throw new Error("Sale not found")
-
-        } catch (error) {
-            toast({ title: "Error", description: "No se pudo cargar el ticket", variant: "destructive" })
-        } finally {
-            setLoading(false)
-        }
-    }
+    const sale = sales.find((s) => s.id === params.id)
 
     if (loading) return <div className="p-10 text-center">Cargando ticket...</div>
     if (!sale) return <div className="p-10 text-center">Ticket no encontrado</div>

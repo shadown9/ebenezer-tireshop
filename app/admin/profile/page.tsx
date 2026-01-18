@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { AdminHeader } from "@/components/admin-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -213,10 +212,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminHeader title="Mi Perfil" description="Gestiona tu información personal y preferencias" />
-
-      <div className="p-6 max-w-4xl mx-auto">
+    <div className="min-h-screen">
+      <div className="p-4 lg:p-6 space-y-6 max-w-4xl mx-auto">
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile">

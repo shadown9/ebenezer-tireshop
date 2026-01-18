@@ -127,14 +127,6 @@ export default function CashControlPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
-            {/* Header */}
-            <div className="bg-white border-b p-4 flex items-center gap-4 sticky top-0 z-10">
-                <Button variant="ghost" size="icon" onClick={() => router.push("/admin/pos")}>
-                    <ChevronLeft className="h-6 w-6" />
-                </Button>
-                <h1 className="font-bold text-lg">Control de Efectivo</h1>
-            </div>
-
             <div className="p-4 space-y-6 max-w-lg mx-auto">
 
                 {/* Main Balance Card */}

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { AdminHeader } from "@/components/admin-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -247,10 +246,8 @@ export default function InventoryPage() {
   }
 
   return (
-    <div>
-      <AdminHeader title="Inventario" description="Gestión de inventario de llantas y productos" />
-
-      <div className="p-4 sm:p-6">
+    <div className="min-h-screen">
+      <div className="p-4 lg:p-6 space-y-6">
         {/* Alert Banner for Low Stock */}
         {lowStockCount > 0 && (
           <Card className="p-4 mb-6 border-destructive/50 bg-destructive/5">

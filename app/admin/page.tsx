@@ -1,15 +1,14 @@
 "use client"
 
-import { AdminHeader } from "@/components/admin-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useDataStore } from "@/lib/data-store"
+import { useAppointments, useTires } from "@/lib/firebase-hooks"
 import { Calendar, Package, AlertTriangle, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { NotificationDemoTrigger } from "@/components/notification-demo-trigger"
 
 export default function AdminDashboard() {
-  const { appointments, tires } = useDataStore()
+  const { appointments } = useAppointments()
+  const { tires } = useTires()
 
   const todayAppointments = appointments.filter(
     (apt) => apt.date === new Date().toISOString().split("T")[0] && apt.status !== "cancelled",
@@ -25,8 +24,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen">
-      <AdminHeader title="Dashboard" description="Welcome back! Here's your business overview." />
-
       <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
@@ -134,10 +131,6 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        <div className="mt-6">
-          <NotificationDemoTrigger />
         </div>
       </div>
     </div>

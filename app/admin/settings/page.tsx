@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AdminHeader } from "@/components/admin-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -167,10 +166,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminHeader title="Business Settings" description="Manage your business information displayed on the website" />
-
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen">
+      <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-6">
         {/* Basic Information */}
         <Card className="border-gray-200 shadow-sm">
           <CardHeader>

@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Calendar } from "@/components/ui/calendar"
 import { Badge } from "@/components/ui/badge"
 import { useServices, addAppointment } from "@/lib/firebase-hooks"
+import { addDoc, collection } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 import { mockServices, serviceOptions } from "@/lib/mock-data"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -220,9 +222,27 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
 
 
 
-      // Store tracking number for success page
       setTrackingNumber(appointment.trackingNumber)
       setIsSuccess(true)
+
+      // Create notification for admin
+      try {
+        await addDoc(collection(db, "notifications"), {
+          type: "appointment",
+          title: "Nueva Cita Reservada",
+          message: `${contactInfo.name} ha reservado una cita para ${appointment.date} a las ${appointment.time}`,
+          priority: "high",
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: "/admin/agenda",
+          metadata: {
+            appointmentId: appointmentId,
+            customerName: contactInfo.name
+          }
+        })
+      } catch (error) {
+        console.error("Error creating notification", error)
+      }
 
       toast({
         title: "Cita Agendada!",
@@ -606,7 +626,11 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                     mode="single"
                     selected={selectedDate}
                     onSelect={setSelectedDate}
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => {
+                      const today = new Date()
+                      today.setHours(0, 0, 0, 0)
+                      return date < today
+                    }}
                     className="rounded-md border mx-auto"
                   />
                 </div>
@@ -630,17 +654,34 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                 <div>
                   <Label className="text-sm sm:text-base">Select Time *</Label>
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mt-2">
-                    {availableTimes.map((time) => (
-                      <Button
-                        key={time}
-                        variant={selectedTime === time ? "default" : "outline"}
-                        onClick={() => setSelectedTime(time)}
-                        className="w-full text-xs sm:text-sm"
-                        size="sm"
-                      >
-                        {time}
-                      </Button>
-                    ))}
+                    {availableTimes
+                      .filter((time) => {
+                        if (!selectedDate) return true
+                        const now = new Date()
+                        const isToday =
+                          selectedDate.getDate() === now.getDate() &&
+                          selectedDate.getMonth() === now.getMonth() &&
+                          selectedDate.getFullYear() === now.getFullYear()
+
+                        if (!isToday) return true
+
+                        const [hours, minutes] = time.split(":").map(Number)
+                        const timeDate = new Date()
+                        timeDate.setHours(hours, minutes, 0, 0)
+
+                        return timeDate > now
+                      })
+                      .map((time) => (
+                        <Button
+                          key={time}
+                          variant={selectedTime === time ? "default" : "outline"}
+                          onClick={() => setSelectedTime(time)}
+                          className="w-full text-xs sm:text-sm"
+                          size="sm"
+                        >
+                          {time}
+                        </Button>
+                      ))}
                   </div>
                 </div>
               </div>
@@ -748,10 +789,19 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
 
               <div className="bg-muted/50 p-3 sm:p-4 rounded-lg">
                 <h4 className="font-semibold text-foreground mb-3 text-sm sm:text-base">Contact Information</h4>
-                <div className="space-y-2 text-xs sm:text-sm">
-                  <span>{contactInfo.name}</span>
-                  <span className="text-muted-foreground">{contactInfo.email}</span>
-                  <span className="text-muted-foreground">{contactInfo.phone}</span>
+                <div className="space-y-3 text-xs sm:text-sm">
+                  <div className="grid grid-cols-[80px_1fr] items-center">
+                    <span className="font-medium text-muted-foreground">Name:</span>
+                    <span className="text-foreground">{contactInfo.name}</span>
+                  </div>
+                  <div className="grid grid-cols-[80px_1fr] items-center">
+                    <span className="font-medium text-muted-foreground">Email:</span>
+                    <span className="text-foreground">{contactInfo.email}</span>
+                  </div>
+                  <div className="grid grid-cols-[80px_1fr] items-center">
+                    <span className="font-medium text-muted-foreground">Phone:</span>
+                    <span className="text-foreground">{contactInfo.phone}</span>
+                  </div>
                 </div>
               </div>
 
