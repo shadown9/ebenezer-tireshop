@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, ClipboardList, Banknote, Settings, LogOut, TrendingUp, CreditCard } from "lucide-react"
+import { ShoppingCart, ClipboardList, Banknote, TrendingUp, BarChart3 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useSales } from "@/lib/firebase-hooks"
@@ -140,6 +140,14 @@ export default function POSDashboard() {
                 >
                     <ClipboardList className="h-5 w-5 mr-2" />
                     Ver Reporte del Día
+                </Button>
+
+                <Button
+                    className="h-16 text-base font-medium bg-blue-700 text-white hover:bg-blue-800 shadow-sm"
+                    onClick={() => router.push("/admin/pos/reports")}
+                >
+                    <BarChart3 className="h-5 w-5 mr-2" />
+                    Estadísticas y Taxes
                 </Button>
 
                 <Button

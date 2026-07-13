@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { collection, addDoc, updateDoc, deleteDoc, doc, query, onSnapshot, where, getDocs } from "firebase/firestore"
+import { collection, addDoc, updateDoc, deleteDoc, doc, query, onSnapshot, where, getDocs, runTransaction, setDoc } from "firebase/firestore"
 import { ref, deleteObject } from "firebase/storage"
 import { db, storage } from "./firebase"
 import type { Tire, Appointment, Service, CMSContent } from "./types"
@@ -394,12 +394,16 @@ export function useSales() {
 
 // Generate unique ticket number
 function generateTicketNumber(): string {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+  const datePart = new Date()
+    .toISOString()
+    .slice(2, 10)
+    .replaceAll("-", "")
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
   let result = ""
   for (let i = 0; i < 6; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length))
   }
-  return result
+  return `ET-${datePart}-${result}`
 }
 
 // Add a new sale
@@ -410,12 +414,51 @@ export async function addSale(sale: Omit<Sale, "id" | "ticket_number" | "created
     created_at: new Date().toISOString(),
   }
 
-  const docRef = await addDoc(collection(db, "sales"), saleData)
-  return docRef.id
+  const saleRef = doc(collection(db, "sales"))
+  const inventoryItems = sale.sale_items.filter((item) => item.source === "inventory" && item.inventory_item_id)
+
+  if (inventoryItems.length === 0) {
+    await setDoc(saleRef, saleData)
+    return saleRef.id
+  }
+
+  await runTransaction(db, async (transaction) => {
+    const stockUpdates = await Promise.all(
+      inventoryItems.map(async (item) => {
+        const tireRef = doc(db, "tires", item.inventory_item_id!)
+        const snapshot = await transaction.get(tireRef)
+
+        if (!snapshot.exists()) {
+          throw new Error(`${item.product_name} ya no existe en inventario.`)
+        }
+
+        const currentQuantity = Number(snapshot.data().quantity ?? 0)
+        const quantitySold = Number(item.quantity ?? 0)
+
+        if (quantitySold <= 0) {
+          throw new Error(`Cantidad inválida para ${item.product_name}.`)
+        }
+
+        if (currentQuantity < quantitySold) {
+          throw new Error(
+            `No hay suficiente inventario para ${item.product_name}. Disponible: ${currentQuantity}.`,
+          )
+        }
+
+        return { tireRef, quantity: currentQuantity - quantitySold }
+      }),
+    )
+
+    transaction.set(saleRef, saleData)
+    stockUpdates.forEach(({ tireRef, quantity }) => {
+      transaction.update(tireRef, { quantity })
+    })
+  })
+
+  return saleRef.id
 }
 
 // Delete a sale (void)
 export async function deleteSale(id: string) {
   await deleteDoc(doc(db, "sales", id))
 }
-

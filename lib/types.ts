@@ -158,12 +158,14 @@ export interface Notification {
 }
 
 export interface SaleItem {
+  inventory_item_id?: string
   product_name: string
   quantity: number
   unit_price: number
   cost_price?: number
   total_price: number
   type?: "tire" | "service" | "part"
+  source?: "inventory" | "manual"
 }
 
 export interface Sale {
@@ -171,11 +173,11 @@ export interface Sale {
   ticket_number: string
   sale_date: string
   customer_name?: string
+  customer_phone?: string
   sale_items: SaleItem[]
   total_amount: number
-  payment_method: "cash" | "card" | "transfer"
+  payment_method: "cash" | "card" | "transfer" | "mixed"
   notes?: string
   created_at: string
   created_by?: string
 }
-

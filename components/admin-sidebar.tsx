@@ -20,6 +20,7 @@ import {
   ShoppingCart,
   Monitor,
   ChevronLeft,
+  BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
@@ -33,6 +34,13 @@ const navItems = [
     icon: Monitor,
     description: "Launch POS System",
     permission: "viewInventory" as const, // Using inventory permission as a proxy for POS access for now
+  },
+  {
+    title: "Reportes",
+    href: "/admin/pos/reports",
+    icon: BarChart3,
+    description: "Sales, accounting, and tax reports",
+    permission: "viewInventory" as const,
   },
   {
     title: "Agenda",

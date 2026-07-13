@@ -5,18 +5,20 @@ import { useRouter } from "next/navigation"
 import { useTires, useServices, addSale } from "@/lib/firebase-hooks"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Minus, Trash2, ShoppingCart, ChevronLeft, ArrowRight, CreditCard, Banknote, Landmark, Settings } from "lucide-react"
+import { Search, Plus, Trash2, CreditCard, Banknote, Landmark, Settings, PackagePlus, ChevronLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface CartItem {
     id: string
+    inventoryItemId?: string
     name: string
     price: number
     costPrice?: number
     quantity: number
     type: "tire" | "service" | "part"
+    source: "inventory" | "manual"
+    stock?: number
 }
 
 export default function NewSalePage() {
@@ -30,7 +32,17 @@ export default function NewSalePage() {
     const [cart, setCart] = useState<CartItem[]>([])
     const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "transfer" | "mixed">("cash")
     const [cashGiven, setCashGiven] = useState("")
+    const [customerName, setCustomerName] = useState("")
+    const [customerPhone, setCustomerPhone] = useState("")
+    const [saleNotes, setSaleNotes] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [manualItem, setManualItem] = useState({
+        name: "",
+        price: "",
+        costPrice: "",
+        quantity: "1",
+        type: "part" as "tire" | "service" | "part",
+    })
 
     const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 
@@ -49,7 +61,8 @@ export default function NewSalePage() {
             price: t.price,
             costPrice: t.costPrice || 0,
             type: (t.type === 'part' ? 'part' : 'tire') as "tire" | "service" | "part",
-            stock: t.quantity
+            stock: t.quantity,
+            source: "inventory" as const,
         })),
         ...services.map(s => ({
             id: s.id,
@@ -57,7 +70,8 @@ export default function NewSalePage() {
             price: s.basePrice,
             costPrice: 0, // Services typically have 0 product cost, or we could add a field later
             type: "service" as const,
-            stock: 999
+            stock: 999,
+            source: "manual" as const,
         }))
     ]
 
@@ -67,22 +81,88 @@ export default function NewSalePage() {
         : allItems
 
     const addToCart = (item: any) => {
+        if (item.source === "inventory" && item.stock <= 0) {
+            toast({
+                title: "Sin inventario",
+                description: `${item.name} no tiene unidades disponibles.`,
+                variant: "destructive",
+            })
+            return
+        }
+
         setCart((prev) => {
             const existingItem = prev.find((i) => i.id === item.id)
             if (existingItem) {
+                if (existingItem.source === "inventory" && existingItem.stock !== undefined && existingItem.quantity >= existingItem.stock) {
+                    toast({
+                        title: "Stock máximo",
+                        description: `Solo hay ${existingItem.stock} disponible(s).`,
+                        variant: "destructive",
+                    })
+                    return prev
+                }
+
                 return prev.map((i) =>
                     i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i,
                 )
             }
-            return [...prev, { id: item.id, name: item.name, price: item.price, costPrice: item.costPrice, quantity: 1, type: item.type }]
+            return [...prev, {
+                id: item.id,
+                inventoryItemId: item.source === "inventory" ? item.id : undefined,
+                name: item.name,
+                price: item.price,
+                costPrice: item.costPrice,
+                quantity: 1,
+                type: item.type,
+                source: item.source,
+                stock: item.source === "inventory" ? item.stock : undefined,
+            }]
         });
         setSearchTerm("") // Clear search after adding
+    }
+
+    const addManualItem = () => {
+        const name = manualItem.name.trim()
+        const price = Number(manualItem.price)
+        const costPrice = Number(manualItem.costPrice || 0)
+        const quantity = Math.max(1, Number.parseInt(manualItem.quantity, 10) || 1)
+
+        if (!name || price <= 0) {
+            toast({
+                title: "Producto manual incompleto",
+                description: "Agrega nombre y precio para facturarlo.",
+                variant: "destructive",
+            })
+            return
+        }
+
+        setCart((prev) => [
+            ...prev,
+            {
+                id: `manual-${crypto.randomUUID()}`,
+                name,
+                price,
+                costPrice,
+                quantity,
+                type: manualItem.type,
+                source: "manual",
+            },
+        ])
+        setManualItem({ name: "", price: "", costPrice: "", quantity: "1", type: "part" })
     }
 
     const updateQuantity = (id: string, delta: number) => {
         setCart(prev => prev.map(item => {
             if (item.id === id) {
                 const newQty = Math.max(1, item.quantity + delta)
+                if (item.source === "inventory" && item.stock !== undefined && newQty > item.stock) {
+                    toast({
+                        title: "Stock máximo",
+                        description: `Solo hay ${item.stock} disponible(s).`,
+                        variant: "destructive",
+                    })
+                    return item
+                }
                 return { ...item, quantity: newQty }
             }
             return item
@@ -94,29 +174,44 @@ export default function NewSalePage() {
     }
 
     const handleCheckout = async () => {
+        if (cart.length === 0) {
+            toast({ title: "Carrito vacío", description: "Agrega al menos un producto.", variant: "destructive" })
+            return
+        }
+
         setIsSubmitting(true)
         try {
-            await addSale({
+            const saleId = await addSale({
                 sale_date: new Date().toISOString(),
-                customer_name: "Cliente General",
+                customer_name: customerName.trim() || "Cliente General",
+                customer_phone: customerPhone.trim() || undefined,
                 sale_items: cart.map(item => ({
+                    inventory_item_id: item.inventoryItemId,
                     product_name: item.name,
                     quantity: item.quantity,
                     unit_price: item.price,
                     cost_price: item.costPrice || 0,
                     total_price: item.price * item.quantity,
-                    type: item.type
+                    type: item.type,
+                    source: item.source
                 })),
                 total_amount: cartTotal,
-                payment_method: paymentMethod as "cash" | "card" | "transfer",
-                notes: paymentMethod === "cash" ? `Efectivo recibido: $${cashGiven}` : undefined
+                payment_method: paymentMethod,
+                notes: [
+                    paymentMethod === "cash" ? `Efectivo recibido: $${cashGiven}` : "",
+                    saleNotes.trim(),
+                ].filter(Boolean).join(" | ") || undefined
             })
 
-            toast({ title: "Venta Completada", description: "La venta se ha registrado correctamente." })
-            router.push("/admin/pos")
+            toast({ title: "Venta Completada", description: "La factura quedó registrada correctamente." })
+            router.push(`/admin/pos/ticket/${saleId}`)
         } catch (error) {
             console.error("Error saving sale:", error)
-            toast({ title: "Error", description: "No se pudo completar la venta", variant: "destructive" })
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "No se pudo completar la venta",
+                variant: "destructive"
+            })
         } finally {
             setIsSubmitting(false)
         }
@@ -128,7 +223,16 @@ export default function NewSalePage() {
 
             {step === 1 ? (
                 <div className="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
-                    {/* Search Bar */}
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">POS</p>
+                            <h1 className="text-2xl font-black text-slate-900">Nueva venta</h1>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => router.push("/admin/pos")}>
+                            Salir
+                        </Button>
+                    </div>
+
                     <div className="relative">
                         <Search className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
                         <Input
@@ -136,25 +240,83 @@ export default function NewSalePage() {
                             className="pl-10 h-12 text-lg bg-white shadow-sm"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            autoFocus
                         />
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg shadow-sm border space-y-3">
+                        <div className="flex items-center gap-2 text-slate-800 font-bold">
+                            <PackagePlus className="h-5 w-5 text-blue-600" />
+                            Producto manual
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Input
+                                className="col-span-2"
+                                placeholder="Nombre en factura"
+                                value={manualItem.name}
+                                onChange={(e) => setManualItem({ ...manualItem, name: e.target.value })}
+                            />
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="Precio"
+                                value={manualItem.price}
+                                onChange={(e) => setManualItem({ ...manualItem, price: e.target.value })}
+                            />
+                            <Input
+                                type="number"
+                                min="1"
+                                step="1"
+                                placeholder="Cant."
+                                value={manualItem.quantity}
+                                onChange={(e) => setManualItem({ ...manualItem, quantity: e.target.value })}
+                            />
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="Costo opcional"
+                                value={manualItem.costPrice}
+                                onChange={(e) => setManualItem({ ...manualItem, costPrice: e.target.value })}
+                            />
+                            <select
+                                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                                value={manualItem.type}
+                                onChange={(e) => setManualItem({ ...manualItem, type: e.target.value as "tire" | "service" | "part" })}
+                            >
+                                <option value="part">Repuesto</option>
+                                <option value="tire">Neumático</option>
+                                <option value="service">Servicio</option>
+                            </select>
+                        </div>
+                        <Button type="button" variant="outline" className="w-full" onClick={addManualItem}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Agregar producto manual
+                        </Button>
                     </div>
 
                     {/* Product List */}
                     <div className="flex-1 overflow-y-auto space-y-2 pb-24">
                         {displayItems.length > 0 ? (
                             displayItems.map(item => (
-                                <div key={item.id} className="bg-white p-4 rounded-lg shadow-sm border flex justify-between items-center" onClick={() => addToCart(item)}>
-                                    <div>
+                                <div
+                                    key={item.id}
+                                    className={`bg-white p-4 rounded-lg shadow-sm border flex justify-between items-center ${item.source === "inventory" && item.stock <= 0 ? "opacity-50" : "active:scale-[0.99]"}`}
+                                    onClick={() => addToCart(item)}
+                                >
+                                    <div className="min-w-0 pr-3">
                                         <h3 className="font-bold text-slate-900">{item.name}</h3>
-                                        <div className="flex gap-2 text-sm mt-1">
+                                        <div className="flex flex-wrap gap-2 text-sm mt-1">
                                             <Badge variant={item.type === "tire" ? "default" : item.type === "part" ? "outline" : "secondary"}>
                                                 {item.type === "tire" ? "Neumático" : item.type === "part" ? "Repuesto" : "Servicio"}
                                             </Badge>
+                                            {item.source === "inventory" && (
+                                                <Badge variant="secondary">Stock: {item.stock}</Badge>
+                                            )}
                                             <span className="font-mono text-slate-600">${item.price}</span>
                                         </div>
                                     </div>
-                                    <Button size="icon" className="h-8 w-8 rounded-full">
+                                    <Button size="icon" className="h-10 w-10 rounded-full flex-shrink-0">
                                         <Plus className="h-5 w-5" />
                                     </Button>
                                 </div>
@@ -177,14 +339,17 @@ export default function NewSalePage() {
                                 <div className="w-full space-y-2">
                                     <h3 className="text-xs font-bold text-slate-400 uppercase">Carrito ({cart.length})</h3>
                                     {cart.map(item => (
-                                        <div key={item.id} className="flex justify-between items-center text-sm">
-                                            <div className="flex items-center gap-2">
+                                        <div key={item.id} className="flex justify-between items-center gap-3 text-sm">
+                                            <div className="flex items-center gap-2 min-w-0">
                                                 <div className="flex border rounded overflow-hidden">
-                                                    <button className="px-2 bg-slate-100 hover:bg-slate-200" onClick={() => updateQuantity(item.id, -1)}>-</button>
+                                                    <button className="px-3 py-1 bg-slate-100 hover:bg-slate-200" onClick={() => updateQuantity(item.id, -1)}>-</button>
                                                     <span className="px-2 py-0.5 min-w-[1.5rem] text-center">{item.quantity}</span>
-                                                    <button className="px-2 bg-slate-100 hover:bg-slate-200" onClick={() => updateQuantity(item.id, 1)}>+</button>
+                                                    <button className="px-3 py-1 bg-slate-100 hover:bg-slate-200" onClick={() => updateQuantity(item.id, 1)}>+</button>
                                                 </div>
-                                                <span className="truncate max-w-[150px]">{item.name}</span>
+                                                <span className="truncate max-w-[46vw] sm:max-w-[260px]">{item.name}</span>
+                                                {item.source === "manual" && (
+                                                    <Badge variant="outline" className="text-[10px]">Manual</Badge>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="font-bold">${(item.price * item.quantity).toFixed(2)}</span>
@@ -202,10 +367,62 @@ export default function NewSalePage() {
                 </div>
             ) : (
                 // Step 2: Checkout
-                <div className="p-4 flex flex-col gap-6 max-w-md mx-auto w-full">
+                <div className="p-4 flex flex-col gap-5 max-w-md mx-auto w-full pb-10">
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => setStep(1)}>
+                            <ChevronLeft className="h-6 w-6" />
+                        </Button>
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Confirmar</p>
+                            <h1 className="text-xl font-black text-slate-900">Cobro y factura</h1>
+                        </div>
+                    </div>
+
                     <div className="p-6 text-center bg-slate-900 text-white rounded-xl shadow-lg">
                         <p className="text-slate-400 text-sm uppercase tracking-wide">Total a Pagar</p>
                         <h1 className="text-5xl font-black mt-2">${cartTotal.toFixed(2)}</h1>
+                    </div>
+
+                    <div className="space-y-3 bg-white rounded-xl border p-4">
+                        <h3 className="font-bold text-slate-700">Resumen de factura</h3>
+                        <div className="space-y-2">
+                            {cart.map((item) => (
+                                <div key={item.id} className="flex justify-between gap-3 text-sm">
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-slate-900 truncate">
+                                            {item.quantity}x {item.name}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            ${item.price.toFixed(2)} c/u
+                                            {item.source === "manual" ? " · Manual" : ""}
+                                        </p>
+                                    </div>
+                                    <span className="font-mono font-bold flex-shrink-0">
+                                        ${(item.price * item.quantity).toFixed(2)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-3 bg-white rounded-xl border p-4">
+                        <h3 className="font-bold text-slate-700">Datos del cliente</h3>
+                        <Input
+                            placeholder="Nombre del cliente (opcional)"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                        />
+                        <Input
+                            placeholder="Teléfono (opcional)"
+                            inputMode="tel"
+                            value={customerPhone}
+                            onChange={(e) => setCustomerPhone(e.target.value)}
+                        />
+                        <Input
+                            placeholder="Nota para buscar luego (opcional)"
+                            value={saleNotes}
+                            onChange={(e) => setSaleNotes(e.target.value)}
+                        />
                     </div>
 
                     <div className="space-y-3">
