@@ -272,7 +272,7 @@ function ensureSessionsTable() {
     sessionsTableReady = sql`
       CREATE TABLE IF NOT EXISTS admin_login_sessions (
         token TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
         created_at TIMESTAMPTZ NOT NULL,
         expires_at TIMESTAMPTZ NOT NULL
       )
