@@ -4,6 +4,7 @@ import type React from "react"
 import { usePathname } from "next/navigation"
 import { AdminSidebar } from "@/components/admin-sidebar"
 import { AdminAuthGuard } from "@/components/admin-auth-guard"
+import { AdminAssistant } from "@/components/admin-assistant"
 
 export default function AdminLayout({
   children,
@@ -23,6 +24,7 @@ export default function AdminLayout({
       <div className="flex min-h-screen bg-background overflow-x-hidden">
         <AdminSidebar />
         <main className="flex-1 w-full pb-safe overflow-x-hidden pt-16 lg:pt-0">{children}</main>
+        <AdminAssistant />
       </div>
     </AdminAuthGuard>
   )
