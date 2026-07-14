@@ -484,7 +484,7 @@ export function AdminAssistant() {
       ].slice(-12))
       setMemory((current) => [
         ...current,
-        `Usuario ${currentUser?.name || "admin"} pregunto: ${cleanQuestion}. ${ASSISTANT_NAME} respondio: ${speechText(reply).slice(0, 280)}`,
+        `Tema reciente: el usuario pregunto sobre "${cleanQuestion.slice(0, 120)}". Mantener continuidad, pero no repetir la misma frase ni el mismo chiste.`,
       ].slice(-8))
     } catch (error) {
       setMode("local")

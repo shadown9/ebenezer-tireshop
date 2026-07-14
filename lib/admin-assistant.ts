@@ -68,6 +68,38 @@ function normalize(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
 }
 
+export function isCasualGreeting(question: string) {
+  const q = normalize(question).trim()
+  return /^(hola|hello|hi|buenas|saludos|hey|que tal|como estas|como estas\?|hola amigo|hola amiga)([\s!?.]*)?$/.test(q)
+}
+
+export function buildGreetingReply(
+  question: string,
+  summary: AdminAssistantSummary,
+  language: AssistantLanguage = "es",
+) {
+  const q = normalize(question)
+  const rawName = summary.user?.name?.trim()
+  const roleWords = ["administrador", "administrator", "admin", "manager", "employee", "empleado"]
+  const firstName = rawName && !roleWords.includes(normalize(rawName)) ? rawName.split(" ")[0] : ""
+
+  const greetings =
+    language === "es"
+      ? [
+          `Hola${firstName ? `, ${firstName}` : ""}. Estoy aqui, listo para ayudarte con lo que haga falta en el panel.`,
+          `Todo bien por aqui${firstName ? `, ${firstName}` : ""}. Dime que revisamos y me pongo en modo taller, pero sin drama.`,
+          `Buenas${firstName ? `, ${firstName}` : ""}. Estoy activo y con las herramientas listas. Que necesitas mirar?`,
+        ]
+      : [
+          `Hi${firstName ? `, ${firstName}` : ""}. I am here and ready to help with anything in the admin panel.`,
+          `All good here${firstName ? `, ${firstName}` : ""}. Tell me what we are checking and I will get to work, no drama.`,
+          `Hey${firstName ? `, ${firstName}` : ""}. I am active and ready. What do you want to look at?`,
+        ]
+
+  const index = Math.abs(q.split("").reduce((total, char) => total + char.charCodeAt(0), 0) + new Date().getMinutes()) % greetings.length
+  return greetings[index]
+}
+
 export function detectAssistantLanguage(question: string, fallback: AssistantLanguage = "es"): AssistantLanguage {
   const q = normalize(question)
   const spanishSignals = [
@@ -183,15 +215,18 @@ export function buildAdminAssistantSystemPrompt(
 ) {
   return [
     language === "es"
-      ? "Eres Ebenezer Assistant, el ayudante interno de Ebenezer Tireshop. Hablas como una persona amable de taller: natural, cercano, util, con humor ligero y sarcasmo limpio solo cuando encaje. No suenes corporativo, no respondas como formulario y no llames siempre al usuario 'Administrador'; usa su nombre si lo conoces."
-      : "You are Ebenezer Assistant, the internal helper for Ebenezer Tireshop. Speak like a friendly shop assistant: natural, practical, close, with light clean humor only when it fits. Do not sound corporate, do not answer like a form, and do not call the user 'Administrator' every time; use their name if known.",
-    "Use only the provided business summary and the app guide. Do not invent totals, invoices, customers, taxes, or inventory.",
+      ? "Eres Ebenezer Assistant, parte del equipo de Ebenezer Tireshop. Tu trabajo es ayudar en el admin de la gomera, pero tu forma de hablar debe sentirse viva: amable, despierta, con criterio propio, un toque de humor limpio cuando venga natural, y cero libreto repetido. Conversa como alguien que entiende el taller y quiere resolver, no como un formulario."
+      : "You are Ebenezer Assistant, part of the Ebenezer Tireshop team. Your job is to help in the tire shop admin, but your voice should feel alive: friendly, alert, thoughtful, with a touch of clean humor when it naturally fits, and no repeated script. Speak like someone who understands the shop and wants to solve things, not like a form.",
     language === "es"
-      ? "Si el usuario solo saluda, conversa normal en 1 o 2 frases, sin etiquetas como Resumen o Siguiente paso. Para preguntas de trabajo, organiza la respuesta en parrafos cortos o bullets simples solo si ayuda. No uses markdown crudo, no uses asteriscos para negrita y evita listas largas si no son necesarias."
-      : "If the user is only greeting or chatting, answer naturally in 1 or 2 sentences, with no labels like Summary or Next step. For work questions, organize the answer in short paragraphs or simple bullets only when useful. Do not use raw markdown, do not use asterisks for bold, and avoid long lists unless needed.",
+      ? "Tu mision: orientar sobre caja, facturas, inventario, citas, servicios, reportes, taxes y flujo del cliente. Si la conversacion es casual, responde casual. Si piden datos o accion, usa el resumen del negocio y guia al usuario con precision."
+      : "Your mission: guide cash, invoices, inventory, appointments, services, reports, taxes, and customer flow. If the conversation is casual, answer casually. If they ask for data or action, use the business summary and guide them precisely.",
+    "Use only the provided business summary and the app guide for factual business data. Do not invent totals, invoices, customers, taxes, or inventory.",
     language === "es"
-      ? "Evita repetir chistes sobre el mismo tema, especialmente stock bajo. Que el humor sea poco, fresco y no distraiga del trabajo."
-      : "Avoid repeating jokes about the same thing, especially low stock. Keep humor light, fresh, and never distracting.",
+      ? "No repitas frases anteriores si el usuario hace una pregunta parecida. Cambia el angulo, reconoce el contexto y responde como si estuvieras presente en la conversacion. Usa etiquetas como Resumen o Siguiente paso solo cuando realmente ayuden."
+      : "Do not repeat previous phrasing when the user asks something similar. Change the angle, recognize the context, and answer as if you are present in the conversation. Use labels like Summary or Next step only when they genuinely help.",
+    language === "es"
+      ? "No llames al usuario 'Administrador' como saludo normal. Si no sabes su nombre real, habla directo sin titulo. El humor debe ser fresco y breve; nunca fuerces chistes sobre stock bajo, dinero o errores."
+      : "Do not call the user 'Administrator' as a normal greeting. If you do not know their real name, speak directly without a title. Humor should be fresh and brief; never force jokes about low stock, money, or errors.",
     language === "es"
       ? "Responde en espanol cuando el usuario escriba en espanol, aunque el panel este en ingles. Si el usuario cambia a ingles, responde en ingles."
       : "Answer in English when the user writes in English. If the user switches to Spanish, answer in Spanish.",
@@ -219,10 +254,7 @@ export function buildLocalAssistantReply(
   const location = routeGuide(summary.currentPath, language)
 
   if (/\b(hola|hello|hi|buenas|saludos)\b/.test(q) && q.length <= 30) {
-    const name = summary.user?.name?.split(" ")[0]
-    return isSpanish
-      ? `Hola${name ? `, ${name}` : ""}. Estoy por aqui, listo para ayudarte con caja, facturas, inventario, citas o reportes. Tu pregunta y yo pongo orden, sin hacer novela.`
-      : `Hi${name ? `, ${name}` : ""}. I am here and ready to help with cash, invoices, inventory, appointments, or reports. You ask, I organize, no drama required.`
+    return buildGreetingReply(question, summary, language)
   }
 
   if (/\b(hablas|sabes hablar|puedes hablar|espanol|español|spanish|speak spanish)\b/.test(q)) {

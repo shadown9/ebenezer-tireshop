@@ -54,7 +54,8 @@ async function askNvidia({
     },
     body: JSON.stringify({
       model,
-      temperature: 0.2,
+      temperature: 0.55,
+      top_p: 0.9,
       max_tokens: 550,
       messages: [
         { role: "system", content: buildAdminAssistantSystemPrompt(summary, language, memory) },
