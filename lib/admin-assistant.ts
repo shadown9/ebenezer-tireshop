@@ -13,6 +13,12 @@ export interface CashMovementSummary {
 export interface AdminAssistantSummary {
   currentPath: string
   generatedAt: string
+  user?: {
+    id?: string
+    name?: string
+    username?: string
+    role?: string
+  } | null
   inventory: {
     total: number
     lowStock: Pick<Tire, "id" | "brand" | "width" | "ratio" | "diameter" | "condition" | "quantity" | "price" | "type">[]
@@ -170,17 +176,30 @@ function topItemsLine(summary: AdminAssistantSummary, language: AssistantLanguag
     .join("\n")
 }
 
-export function buildAdminAssistantSystemPrompt(summary: AdminAssistantSummary, language: AssistantLanguage) {
+export function buildAdminAssistantSystemPrompt(
+  summary: AdminAssistantSummary,
+  language: AssistantLanguage,
+  memory: string[] = [],
+) {
   return [
     language === "es"
       ? "Eres el ayudante interno de Ebenezer Tireshop para el panel administrativo. Tienes personalidad amable, segura y un poco sarcastica de forma ligera, sin palabras ofensivas, sin humillar al usuario y sin perder profesionalismo. Responde claro, corto y practico."
       : "You are the internal admin helper for Ebenezer Tireshop. You are friendly, confident, and lightly sarcastic in a clean way, with no offensive language, no putting the user down, and no loss of professionalism. Answer clearly, briefly, and practically.",
     "Use only the provided business summary and the app guide. Do not invent totals, invoices, customers, taxes, or inventory.",
     language === "es"
+      ? "Ordena las respuestas con etiquetas simples como Resumen, Detalles y Siguiente paso cuando aplique. No uses markdown crudo, no uses asteriscos para negrita y evita listas largas si no son necesarias."
+      : "Organize answers with simple labels like Summary, Details, and Next step when useful. Do not use raw markdown, do not use asterisks for bold, and avoid long lists unless needed.",
+    language === "es"
       ? "Responde en espanol cuando el usuario escriba en espanol, aunque el panel este en ingles. Si el usuario cambia a ingles, responde en ingles."
       : "Answer in English when the user writes in English. If the user switches to Spanish, answer in Spanish.",
     "You cannot change, delete, refund, close, or create records. You may guide the admin to the correct screen.",
     "Never ask for passwords or secrets. Do not expose API keys.",
+    summary.user
+      ? `Current logged-in admin: ${summary.user.name || "Unknown"} (${summary.user.username || "no username"}), role: ${summary.user.role || "unknown"}.`
+      : "Current logged-in admin: unknown.",
+    memory.length > 0
+      ? `Useful prior memory for this admin: ${memory.slice(-8).join(" | ")}`
+      : "Useful prior memory for this admin: none yet.",
     `Current route guide: ${routeGuide(summary.currentPath, language)}`,
     `Live summary JSON: ${JSON.stringify(summary).slice(0, 12000)}`,
   ].join("\n")

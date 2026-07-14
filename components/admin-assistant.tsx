@@ -1,8 +1,9 @@
 "use client"
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Bot, Loader2, MessageCircle, Send, ShieldCheck, Sparkles, X } from "lucide-react"
+import { Loader2, MessageCircle, Send, ShieldCheck, Sparkles, Volume2, VolumeX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -11,32 +12,37 @@ import {
   useServices,
   useTires,
 } from "@/lib/firebase-hooks"
-import { useAdminText } from "@/lib/admin-translations"
 import type {
   AdminAssistantSummary,
   AssistantChatMessage,
   CashMovementSummary,
 } from "@/lib/admin-assistant"
-import type { Appointment, Sale, Tire } from "@/lib/types"
+import type { Appointment, Sale, Tire, User as AdminUser } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 type AssistantMode = "local" | "ai"
 
 const STORAGE_KEY = "ebenezer-admin-assistant-thread"
+const MEMORY_STORAGE_KEY = "ebenezer-admin-assistant-memory"
+const LANGUAGE_STORAGE_KEY = "ebenezer-admin-assistant-language"
+const ASSISTANT_NAME = "Ebenezer Assistant"
 
 const copy = {
   es: {
-    title: "Ayudante IA",
-    subtitle: "Guia segura del admin",
-    open: "Abrir ayudante",
-    close: "Cerrar ayudante",
+    title: ASSISTANT_NAME,
+    subtitle: "Tu copiloto de la gomera",
+    open: "Abrir Ebenezer Assistant",
+    close: "Cerrar Ebenezer Assistant",
     placeholder: "Pregunta sobre caja, facturas, inventario, citas, taxes...",
     send: "Enviar",
     local: "modo seguro local",
     ai: "IA conectada",
     safety: "Solo lee resumenes. No cambia datos.",
+    language: "Idioma",
+    listen: "Escuchar respuesta",
+    stopListening: "Detener voz",
     welcome:
-      "Hola, soy tu ayudante del admin: amable, atento y con una pizca de sarcasmo limpio, porque alguien tiene que poner orden sin hacer drama. Puedo orientarte con caja, facturas, inventario, citas, reportes y taxes sin tocar datos automaticamente.",
+      "Hola, soy Ebenezer Assistant. Te ayudo con caja, facturas, inventario, citas, reportes y taxes sin tocar datos automaticamente. Amable, rapido y con sarcasmo limpio, porque el desorden administrativo ya hace suficiente ruido.",
     error: "No pude responder ahora mismo. Intenta con una pregunta mas corta.",
     quick: [
       "¿Qué puedo hacer aquí?",
@@ -48,17 +54,20 @@ const copy = {
     ],
   },
   en: {
-    title: "AI Helper",
-    subtitle: "Safe admin guide",
-    open: "Open helper",
-    close: "Close helper",
+    title: ASSISTANT_NAME,
+    subtitle: "Your tire shop copilot",
+    open: "Open Ebenezer Assistant",
+    close: "Close Ebenezer Assistant",
     placeholder: "Ask about cash, invoices, inventory, appointments, taxes...",
     send: "Send",
     local: "safe local mode",
     ai: "AI connected",
     safety: "Reads summaries only. It does not change data.",
+    language: "Language",
+    listen: "Listen to response",
+    stopListening: "Stop voice",
     welcome:
-      "Hi, I am your admin helper: friendly, sharp, and lightly sarcastic in a clean way, because someone has to keep things organized without making it dramatic. I can guide you through cash, invoices, inventory, appointments, reports, and taxes without changing data automatically.",
+      "Hi, I am Ebenezer Assistant. I help with cash, invoices, inventory, appointments, reports, and taxes without changing data automatically. Friendly, quick, and lightly sarcastic, because admin chaos already makes enough noise.",
     error: "I could not answer right now. Try a shorter question.",
     quick: [
       "What can I do here?",
@@ -69,6 +78,42 @@ const copy = {
       "Tax preparation",
     ],
   },
+}
+
+function cleanAssistantText(content: string) {
+  return content
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/^\s*[-*]\s+/gm, "• ")
+    .trim()
+}
+
+function messageBlocks(content: string) {
+  const cleaned = cleanAssistantText(content)
+  return cleaned.split(/\n{2,}/).filter(Boolean)
+}
+
+function speechText(content: string) {
+  return cleanAssistantText(content)
+    .replace(/•/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function loadAdminUser() {
+  if (typeof window === "undefined") return null
+
+  try {
+    const saved = window.localStorage.getItem("admin_user")
+    return saved ? (JSON.parse(saved) as AdminUser) : null
+  } catch {
+    return null
+  }
+}
+
+function getMemoryStorageKey(user: AdminUser | null) {
+  const id = user?.id || user?.username || "shared"
+  return `${MEMORY_STORAGE_KEY}:${id}`
 }
 
 function toNumber(value: unknown) {
@@ -116,6 +161,7 @@ function buildSummary({
   sales,
   services,
   cashMovements,
+  currentUser,
 }: {
   currentPath: string
   tires: Tire[]
@@ -123,6 +169,7 @@ function buildSummary({
   sales: Sale[]
   services: ReturnType<typeof useServices>["services"]
   cashMovements: CashMovementSummary[]
+  currentUser: AdminUser | null
 }): AdminAssistantSummary {
   const today = dateKey()
   const lowStock = tires
@@ -172,6 +219,14 @@ function buildSummary({
   return {
     currentPath,
     generatedAt: new Date().toISOString(),
+    user: currentUser
+      ? {
+          id: currentUser.id,
+          name: currentUser.name,
+          username: currentUser.username,
+          role: currentUser.role,
+        }
+      : null,
     inventory: {
       total: tires.length,
       lowStock,
@@ -238,8 +293,13 @@ function buildSummary({
 
 export function AdminAssistant() {
   const pathname = usePathname()
-  const { language } = useAdminText()
-  const text = copy[language]
+  const [currentUser] = useState<AdminUser | null>(() => loadAdminUser())
+  const [assistantLanguage, setAssistantLanguage] = useState<"es" | "en">(() => {
+    if (typeof window === "undefined") return "es"
+    const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+    return saved === "en" || saved === "es" ? saved : "es"
+  })
+  const text = copy[assistantLanguage]
   const { tires } = useTires()
   const { appointments } = useAppointments()
   const { services } = useServices()
@@ -249,9 +309,21 @@ export function AdminAssistant() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<AssistantMode>("local")
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
+  const [memory, setMemory] = useState<string[]>(() => {
+    if (typeof window === "undefined") return []
+
+    try {
+      const saved = window.localStorage.getItem(getMemoryStorageKey(loadAdminUser()))
+      const parsed = saved ? (JSON.parse(saved) as string[]) : []
+      return Array.isArray(parsed) ? parsed.slice(-8) : []
+    } catch {
+      return []
+    }
+  })
   const [messages, setMessages] = useState<AssistantChatMessage[]>(() => {
     if (typeof window === "undefined") {
-      return [{ role: "assistant", content: text.welcome }]
+      return [{ role: "assistant", content: copy.es.welcome }]
     }
 
     try {
@@ -259,16 +331,30 @@ export function AdminAssistant() {
       const parsed = saved ? (JSON.parse(saved) as AssistantChatMessage[]) : []
       return Array.isArray(parsed) && parsed.length > 0
         ? parsed.slice(-12)
-        : [{ role: "assistant", content: text.welcome }]
+        : [{ role: "assistant", content: copy.es.welcome }]
     } catch {
-      return [{ role: "assistant", content: text.welcome }]
+      return [{ role: "assistant", content: copy.es.welcome }]
     }
   })
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, assistantLanguage)
+  }, [assistantLanguage])
+
+  useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-12)))
   }, [messages])
+
+  useEffect(() => {
+    window.localStorage.setItem(getMemoryStorageKey(currentUser), JSON.stringify(memory.slice(-8)))
+  }, [currentUser, memory])
+
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis?.cancel()
+    }
+  }, [])
 
   useEffect(() => {
     let ignore = false
@@ -310,8 +396,9 @@ export function AdminAssistant() {
         sales,
         services,
         cashMovements,
+        currentUser,
       }),
-    [appointments, cashMovements, pathname, sales, services, tires],
+    [appointments, cashMovements, currentUser, pathname, sales, services, tires],
   )
 
   async function submitQuestion(question: string) {
@@ -337,15 +424,21 @@ export function AdminAssistant() {
         body: JSON.stringify({
           messages: nextMessages,
           summary,
-          language,
+          language: assistantLanguage,
+          memory,
         }),
       })
       const data = await response.json()
+      const reply = data.reply || text.error
       setMode(data.mode === "ai" ? "ai" : "local")
       setMessages((current) => [
         ...current,
-        { role: "assistant", content: data.reply || text.error },
+        { role: "assistant", content: reply },
       ].slice(-12))
+      setMemory((current) => [
+        ...current,
+        `Usuario ${currentUser?.name || "admin"} pregunto: ${cleanQuestion}. ${ASSISTANT_NAME} respondio: ${speechText(reply).slice(0, 280)}`,
+      ].slice(-8))
     } catch {
       setMode("local")
       setMessages((current) => [...current, { role: "assistant", content: text.error }].slice(-12))
@@ -359,14 +452,40 @@ export function AdminAssistant() {
     void submitQuestion(input)
   }
 
+  function toggleVoice(content: string, index: number) {
+    if (!("speechSynthesis" in window)) return
+
+    if (speakingIndex === index) {
+      window.speechSynthesis.cancel()
+      setSpeakingIndex(null)
+      return
+    }
+
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(speechText(content))
+    utterance.lang = assistantLanguage === "es" ? "es-US" : "en-US"
+    utterance.rate = 0.96
+    utterance.pitch = 1
+    utterance.onend = () => setSpeakingIndex(null)
+    utterance.onerror = () => setSpeakingIndex(null)
+    setSpeakingIndex(index)
+    window.speechSynthesis.speak(utterance)
+  }
+
   return (
     <div className="fixed bottom-4 right-4 z-50 print:hidden sm:bottom-5 sm:right-5">
       {open ? (
-        <section className="flex h-[min(680px,calc(100vh-2rem))] w-[calc(100vw-2rem)] max-w-[420px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl sm:w-[420px]">
+        <section className="flex h-[min(700px,calc(100vh-2rem))] w-[calc(100vw-2rem)] max-w-[440px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl sm:w-[440px]">
           <header className="flex items-center justify-between border-b border-slate-200 bg-slate-950 px-4 py-3 text-white">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-orange-500">
-                <Bot className="size-5" />
+              <div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-white ring-2 ring-orange-500">
+                <Image
+                  src="/logo.png"
+                  alt={ASSISTANT_NAME}
+                  fill
+                  sizes="44px"
+                  className="object-cover"
+                />
               </div>
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-bold">{text.title}</h2>
@@ -385,12 +504,35 @@ export function AdminAssistant() {
             </Button>
           </header>
 
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 text-xs">
-            <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
-              {mode === "ai" ? <Sparkles className="size-3.5 text-orange-500" /> : <ShieldCheck className="size-3.5 text-emerald-600" />}
-              {mode === "ai" ? text.ai : text.local}
-            </span>
-            <span className="text-right text-slate-500">{text.safety}</span>
+          <div className="space-y-2 border-b border-slate-200 px-4 py-3 text-xs">
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
+                {mode === "ai" ? <Sparkles className="size-3.5 text-orange-500" /> : <ShieldCheck className="size-3.5 text-emerald-600" />}
+                {mode === "ai" ? text.ai : text.local}
+              </span>
+              <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5" aria-label={text.language}>
+                {(["es", "en"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={cn(
+                      "h-7 rounded px-3 text-xs font-bold transition",
+                      assistantLanguage === option
+                        ? "bg-orange-600 text-white shadow-sm"
+                        : "text-slate-600 hover:bg-white",
+                    )}
+                    onClick={() => {
+                      setAssistantLanguage(option)
+                      window.speechSynthesis?.cancel()
+                      setSpeakingIndex(null)
+                    }}
+                  >
+                    {option === "es" ? "ES" : "EN"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-slate-500">{text.safety}</p>
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4">
@@ -398,19 +540,40 @@ export function AdminAssistant() {
               <div
                 key={`${message.role}-${index}`}
                 className={cn(
-                  "max-w-[88%] whitespace-pre-line rounded-lg px-3 py-2 text-sm leading-relaxed shadow-sm",
+                  "group max-w-[90%] rounded-lg px-3 py-2 text-sm leading-relaxed shadow-sm",
                   message.role === "user"
                     ? "ml-auto bg-orange-600 text-white"
                     : "mr-auto border border-slate-200 bg-white text-slate-900",
                 )}
               >
-                {message.content}
+                {message.role === "assistant" ? (
+                  <div className="space-y-2">
+                    <div className="space-y-2">
+                      {messageBlocks(message.content).map((block, blockIndex) => (
+                        <p key={blockIndex} className="whitespace-pre-line">
+                          {block}
+                        </p>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-orange-300 hover:text-orange-700"
+                      onClick={() => toggleVoice(message.content, index)}
+                      aria-label={speakingIndex === index ? text.stopListening : text.listen}
+                    >
+                      {speakingIndex === index ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+                      {speakingIndex === index ? text.stopListening : text.listen}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-line">{cleanAssistantText(message.content)}</p>
+                )}
               </div>
             ))}
             {loading ? (
               <div className="mr-auto inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
                 <Loader2 className="size-4 animate-spin text-orange-600" />
-                {language === "es" ? "Pensando..." : "Thinking..."}
+                {assistantLanguage === "es" ? "Pensando..." : "Thinking..."}
               </div>
             ) : null}
             <div ref={messagesEndRef} />
@@ -461,8 +624,11 @@ export function AdminAssistant() {
           aria-label={text.open}
           onClick={() => setOpen(true)}
         >
-          <MessageCircle className="size-5" />
+          <span className="relative size-7 overflow-hidden rounded-full bg-white">
+            <Image src="/logo.png" alt="" fill sizes="28px" className="object-cover" />
+          </span>
           <span className="hidden sm:inline">{text.title}</span>
+          <MessageCircle className="size-4" />
         </Button>
       )}
     </div>

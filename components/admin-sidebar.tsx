@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,6 @@ import {
   FileText,
   User,
   LogOut,
-  ShoppingCart,
   Monitor,
   ChevronLeft,
   BarChart3,
@@ -28,6 +27,7 @@ import Image from "next/image"
 import { hasPermission, ROLE_NAMES } from "@/lib/permissions"
 import { useAdminText } from "@/lib/admin-translations"
 import LanguageToggle from "@/components/language-toggle"
+import type { User as AdminUser } from "@/lib/types"
 
 const getNavItems = (at: ReturnType<typeof useAdminText>["at"]) => [
   {
@@ -105,22 +105,24 @@ const getNavItems = (at: ReturnType<typeof useAdminText>["at"]) => [
 function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   const router = useRouter()
   const { at } = useAdminText()
-  const [currentUser, setCurrentUser] = useState<any | null>(null)
-
-  useEffect(() => {
+  const [currentUser] = useState<AdminUser | null>(() => {
+    if (typeof window === "undefined") return null
     const userStr = localStorage.getItem("admin_user")
     if (userStr) {
       try {
-        setCurrentUser(JSON.parse(userStr))
+        return JSON.parse(userStr) as AdminUser
       } catch (error) {
         console.error("Error parsing user:", error)
       }
     }
-  }, [])
+
+    return null
+  })
 
   const handleLogout = () => {
     localStorage.removeItem("admin_token")
     localStorage.removeItem("admin_user")
+    localStorage.removeItem("ebenezer-admin-assistant-thread")
     if (onNavigate) onNavigate()
     router.push("/admin/login")
   }

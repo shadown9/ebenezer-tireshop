@@ -15,6 +15,7 @@ interface AssistantRequest {
   messages?: AssistantChatMessage[]
   summary?: AdminAssistantSummary
   language?: AssistantLanguage
+  memory?: string[]
 }
 
 function safeMessages(messages: AssistantChatMessage[]) {
@@ -31,10 +32,12 @@ async function askNvidia({
   messages,
   summary,
   language,
+  memory,
 }: {
   messages: AssistantChatMessage[]
   summary: AdminAssistantSummary
   language: AssistantLanguage
+  memory: string[]
 }) {
   const apiKey = process.env.NVIDIA_API_KEY
   if (!apiKey) return null
@@ -53,7 +56,7 @@ async function askNvidia({
       temperature: 0.2,
       max_tokens: 550,
       messages: [
-        { role: "system", content: buildAdminAssistantSystemPrompt(summary, language) },
+        { role: "system", content: buildAdminAssistantSystemPrompt(summary, language, memory) },
         ...safeMessages(messages),
       ],
     }),
@@ -80,6 +83,9 @@ export async function POST(req: NextRequest) {
 
     const body = (await req.json()) as AssistantRequest
     const messages = Array.isArray(body.messages) ? body.messages : []
+    const memory = Array.isArray(body.memory)
+      ? body.memory.map((item) => String(item).slice(0, 500)).slice(-8)
+      : []
     const summary = body.summary
     const panelLanguage: AssistantLanguage = body.language === "en" ? "en" : "es"
     const latestQuestion = messages.filter((message) => message.role === "user").at(-1)?.content || ""
@@ -101,7 +107,7 @@ export async function POST(req: NextRequest) {
     const fallback = buildLocalAssistantReply(latestQuestion, summary, language)
 
     try {
-      const aiReply = await askNvidia({ messages, summary, language })
+      const aiReply = await askNvidia({ messages, summary, language, memory })
       if (aiReply) {
         return NextResponse.json({ mode: "ai", reply: aiReply })
       }
