@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 
 type AssistantMode = "local" | "ai"
 type MessageSource = "text" | "voice"
+type AssistantFallbackReason = "missing-session" | "invalid-session" | "ai-unavailable" | null
 
 type SpeechRecognitionConstructor = new () => SpeechRecognition
 
@@ -81,6 +82,11 @@ const copy = {
     local: "modo seguro local",
     ai: "IA conectada",
     safety: "Solo lee resumenes. No cambia datos.",
+    reasons: {
+      "missing-session": "No veo sesion activa para IA.",
+      "invalid-session": "Sesion no validada para IA.",
+      "ai-unavailable": "La IA externa no respondio; usando guia local.",
+    },
     language: "Idioma",
     listen: "Escuchar respuesta",
     stopListening: "Detener voz",
@@ -107,6 +113,11 @@ const copy = {
     local: "safe local mode",
     ai: "AI connected",
     safety: "Reads summaries only. It does not change data.",
+    reasons: {
+      "missing-session": "No active session for AI.",
+      "invalid-session": "Session not validated for AI.",
+      "ai-unavailable": "External AI did not respond; using local guide.",
+    },
     language: "Language",
     listen: "Listen to response",
     stopListening: "Stop voice",
@@ -385,6 +396,7 @@ export function AdminAssistant() {
     if (typeof window === "undefined") return "local"
     return window.localStorage.getItem(getModeStorageKey()) === "ai" ? "ai" : "local"
   })
+  const [fallbackReason, setFallbackReason] = useState<AssistantFallbackReason>(null)
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
@@ -556,9 +568,11 @@ export function AdminAssistant() {
           : "I am ready here. Tell me if we are checking cash, invoices, inventory, appointments, reports, or taxes and I will keep it practical."
       const reply = data?.reply || fallbackReply
       setMode(data?.mode === "ai" ? "ai" : "local")
+      setFallbackReason(data?.mode === "ai" ? null : data?.reason || "ai-unavailable")
       setMessages([{ role: "assistant", content: reply }])
     } catch {
       setMode("local")
+      setFallbackReason("ai-unavailable")
       setMessages([
         {
           role: "assistant",
@@ -593,7 +607,7 @@ export function AdminAssistant() {
         summary,
         language: assistantLanguage,
         memory,
-        token: adminToken,
+        token: "",
       }
       const sendAssistantRequest = (token: string, includeToken = true) =>
         fetch("/api/admin/assistant", {
@@ -607,9 +621,9 @@ export function AdminAssistant() {
           body: JSON.stringify(includeToken ? requestBody : { ...requestBody, token: "" }),
         })
 
-      let response = await sendAssistantRequest(adminToken)
+      let response = await sendAssistantRequest("", false)
       if (response.status === 401) {
-        response = await sendAssistantRequest("", false)
+        response = await sendAssistantRequest(adminToken)
       }
       const data = await response.json()
       if (!response.ok) {
@@ -621,6 +635,7 @@ export function AdminAssistant() {
       }
       const reply = data.reply || text.error
       setMode(data.mode === "ai" ? "ai" : "local")
+      setFallbackReason(data.mode === "ai" ? null : data.reason || "ai-unavailable")
       setMessages((current) => {
         const next = [
           ...current,
@@ -639,6 +654,7 @@ export function AdminAssistant() {
       ].slice(-8))
     } catch (error) {
       setMode("local")
+      setFallbackReason("ai-unavailable")
       setMessages((current) => [
         ...current,
         { role: "assistant" as const, content: error instanceof Error ? error.message : text.error },
@@ -764,6 +780,9 @@ export function AdminAssistant() {
               </div>
             </div>
             <p className="text-slate-500">{text.safety}</p>
+            {mode === "local" && fallbackReason ? (
+              <p className="font-medium text-orange-700">{text.reasons[fallbackReason]}</p>
+            ) : null}
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4">
