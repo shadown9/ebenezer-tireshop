@@ -75,12 +75,25 @@ async function askNvidia({
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as AssistantRequest
-    const token = req.headers.get("authorization")?.replace("Bearer ", "") || body.token || req.cookies.get("admin_token")?.value
-    if (!token) {
+    const tokenCandidates = [
+      req.cookies.get("admin_token")?.value,
+      req.headers.get("authorization")?.replace("Bearer ", ""),
+      body.token,
+    ]
+      .map((token) => token?.trim())
+      .filter((token): token is string => Boolean(token))
+      .filter((token, index, tokens) => tokens.indexOf(token) === index)
+
+    if (tokenCandidates.length === 0) {
       return NextResponse.json({ error: "Missing token" }, { status: 401 })
     }
 
-    const user = await getCurrentUser(token)
+    let user = null
+    for (const token of tokenCandidates) {
+      user = await getCurrentUser(token)
+      if (user) break
+    }
+
     if (!user) {
       return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 })
     }

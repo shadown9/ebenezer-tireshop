@@ -590,7 +590,7 @@ export function AdminAssistant() {
           assistantLanguage === "es"
             ? "Tu sesion de admin parece vencida. Cierra sesion y vuelve a entrar para que pueda ayudarte con datos reales. Si, la seguridad a veces se pone intensa, pero aqui nos conviene."
             : "Your admin session looks expired. Log out and log back in so I can help with real data. Security can be dramatic, but this time it is useful."
-        throw new Error(data?.error || authMessage)
+        throw new Error(response.status === 401 ? authMessage : data?.error || authMessage)
       }
       const reply = data.reply || text.error
       setMode(data.mode === "ai" ? "ai" : "local")
@@ -797,6 +797,15 @@ export function AdminAssistant() {
                 </button>
               ))}
             </div>
+            {isListening ? (
+              <div className="mb-2 flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800">
+                <span className="relative flex size-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-500 opacity-60" />
+                  <span className="relative inline-flex size-2.5 rounded-full bg-orange-600" />
+                </span>
+                {text.listening}
+              </div>
+            ) : null}
             <form onSubmit={handleSubmit} className="flex gap-2">
               <Textarea
                 value={input}
@@ -815,9 +824,9 @@ export function AdminAssistant() {
                 size="icon"
                 variant={isListening ? "default" : "outline"}
                 className={cn(
-                  "h-11 w-11 shrink-0",
+                  "h-11 w-11 shrink-0 transition",
                   isListening
-                    ? "bg-slate-950 text-white hover:bg-slate-800"
+                    ? "animate-pulse bg-slate-950 text-white ring-2 ring-orange-400 ring-offset-2 hover:bg-slate-800"
                     : "border-orange-200 text-orange-700 hover:bg-orange-50",
                 )}
                 disabled={loading || !canUseVoiceInput}
