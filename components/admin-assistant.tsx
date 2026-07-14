@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Loader2, MessageCircle, Send, ShieldCheck, Sparkles, Volume2, VolumeX, X } from "lucide-react"
+import { Loader2, MessageCircle, Mic, MicOff, Send, ShieldCheck, Sparkles, Volume2, VolumeX, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -21,6 +21,48 @@ import type { Appointment, Sale, Tire, User as AdminUser } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 type AssistantMode = "local" | "ai"
+type MessageSource = "text" | "voice"
+
+type SpeechRecognitionConstructor = new () => SpeechRecognition
+
+interface SpeechRecognitionEventResult {
+  readonly isFinal: boolean
+  readonly 0: SpeechRecognitionAlternative
+}
+
+interface SpeechRecognitionAlternative {
+  readonly transcript: string
+}
+
+interface SpeechRecognitionEvent extends Event {
+  readonly results: {
+    readonly length: number
+    readonly [index: number]: SpeechRecognitionEventResult
+  }
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  start: () => void
+  stop: () => void
+  abort: () => void
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
+  onend: (() => void) | null
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor
+    webkitSpeechRecognition?: SpeechRecognitionConstructor
+  }
+}
 
 const STORAGE_KEY = "ebenezer-admin-assistant-thread"
 const MEMORY_STORAGE_KEY = "ebenezer-admin-assistant-memory"
@@ -41,8 +83,9 @@ const copy = {
     language: "Idioma",
     listen: "Escuchar respuesta",
     stopListening: "Detener voz",
-    welcome:
-      "Hola, soy Ebenezer Assistant. Te ayudo con caja, facturas, inventario, citas, reportes y taxes sin tocar datos automaticamente. Amable, rapido y con sarcasmo limpio, porque el desorden administrativo ya hace suficiente ruido.",
+    voiceInput: "Enviar nota de voz",
+    stopVoiceInput: "Detener nota de voz",
+    listening: "Escuchando...",
     error: "No pude responder ahora mismo. Intenta con una pregunta mas corta.",
     quick: [
       "¿Qué puedo hacer aquí?",
@@ -66,8 +109,9 @@ const copy = {
     language: "Language",
     listen: "Listen to response",
     stopListening: "Stop voice",
-    welcome:
-      "Hi, I am Ebenezer Assistant. I help with cash, invoices, inventory, appointments, reports, and taxes without changing data automatically. Friendly, quick, and lightly sarcastic, because admin chaos already makes enough noise.",
+    voiceInput: "Send voice note",
+    stopVoiceInput: "Stop voice note",
+    listening: "Listening...",
     error: "I could not answer right now. Try a shorter question.",
     quick: [
       "What can I do here?",
@@ -332,6 +376,7 @@ export function AdminAssistant() {
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<AssistantMode>("local")
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
+  const [isListening, setIsListening] = useState(false)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [memory, setMemory] = useState<string[]>(() => {
     if (typeof window === "undefined") return []
@@ -345,21 +390,20 @@ export function AdminAssistant() {
     }
   })
   const [messages, setMessages] = useState<AssistantChatMessage[]>(() => {
-    if (typeof window === "undefined") {
-      return [{ role: "assistant", content: copy.es.welcome }]
-    }
+    if (typeof window === "undefined") return []
 
     try {
       const saved = window.localStorage.getItem(getVisibleChatStorageKey())
       const parsed = saved ? (JSON.parse(saved) as AssistantChatMessage[]) : []
-      return Array.isArray(parsed) && parsed.length > 0
-        ? parsed.slice(-12)
-        : [{ role: "assistant", content: copy.es.welcome }]
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed.slice(-12) : []
     } catch {
-      return [{ role: "assistant", content: copy.es.welcome }]
+      return []
     }
   })
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const welcomeRequestedRef = useRef(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const transcriptRef = useRef("")
 
   useEffect(() => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, assistantLanguage)
@@ -376,6 +420,7 @@ export function AdminAssistant() {
   useEffect(() => {
     return () => {
       window.speechSynthesis?.cancel()
+      recognitionRef.current?.abort()
     }
   }, [])
 
@@ -438,14 +483,81 @@ export function AdminAssistant() {
       }),
     [appointments, cashMovements, currentUser, pathname, sales, services, tires],
   )
+  const canUseVoiceInput = typeof window !== "undefined" && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition)
 
-  async function submitQuestion(question: string) {
+  useEffect(() => {
+    if (!open || messages.length > 0 || loading || welcomeRequestedRef.current) return
+    welcomeRequestedRef.current = true
+    void requestInitialGreeting()
+    // The greeting should fire only once for a newly opened empty chat.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, messages.length, open])
+
+  function speakContent(content: string, index: number) {
+    if (!("speechSynthesis" in window)) return
+
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(speechText(content))
+    const voice = chooseVoice(voices, assistantLanguage)
+    if (voice) {
+      utterance.voice = voice
+    }
+    utterance.lang = assistantLanguage === "es" ? "es-US" : "en-US"
+    utterance.rate = assistantLanguage === "es" ? 0.92 : 0.94
+    utterance.pitch = 1.03
+    utterance.onend = () => setSpeakingIndex(null)
+    utterance.onerror = () => setSpeakingIndex(null)
+    setSpeakingIndex(index)
+    window.speechSynthesis.speak(utterance)
+  }
+
+  async function requestInitialGreeting() {
+    setLoading(true)
+
+    try {
+      const adminToken = window.localStorage.getItem("admin_token") || ""
+      const response = await fetch("/api/admin/assistant", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({
+          event: "chat_opened",
+          messages: [],
+          summary,
+          language: assistantLanguage,
+          memory,
+          token: adminToken,
+        }),
+      })
+      const data = await response.json()
+      const reply = data.reply || text.error
+      setMode(data.mode === "ai" ? "ai" : "local")
+      setMessages([{ role: "assistant", content: reply }])
+    } catch {
+      setMode("local")
+      setMessages([
+        {
+          role: "assistant",
+          content:
+            assistantLanguage === "es"
+              ? "Estoy aqui para ayudarte con el panel. Dime que revisamos y arrancamos sin hacer drama administrativo."
+              : "I am here to help with the admin panel. Tell me what we are checking and we will get moving.",
+        },
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function submitQuestion(question: string, source: MessageSource = "text") {
     const cleanQuestion = question.trim()
     if (!cleanQuestion || loading) return
 
     const nextMessages: AssistantChatMessage[] = [
       ...messages,
-      { role: "user", content: cleanQuestion },
+      { role: "user" as const, content: cleanQuestion },
     ].slice(-10)
 
     setMessages(nextMessages)
@@ -478,19 +590,27 @@ export function AdminAssistant() {
       }
       const reply = data.reply || text.error
       setMode(data.mode === "ai" ? "ai" : "local")
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", content: reply },
-      ].slice(-12))
+      setMessages((current) => {
+        const next = [
+          ...current,
+          { role: "assistant" as const, content: reply },
+        ].slice(-12)
+        if (source === "voice") {
+          window.setTimeout(() => speakContent(reply, next.length - 1), 150)
+        }
+        return next
+      })
       setMemory((current) => [
         ...current,
-        `Tema reciente: el usuario pregunto sobre "${cleanQuestion.slice(0, 120)}". Mantener continuidad, pero no repetir la misma frase ni el mismo chiste.`,
+        `Conversacion previa: el usuario pregunto "${cleanQuestion.slice(0, 140)}"; la respuesta trato sobre "${reply
+          .replace(/\s+/g, " ")
+          .slice(0, 180)}". Mantener continuidad sin repetir la misma frase.`,
       ].slice(-8))
     } catch (error) {
       setMode("local")
       setMessages((current) => [
         ...current,
-        { role: "assistant", content: error instanceof Error ? error.message : text.error },
+        { role: "assistant" as const, content: error instanceof Error ? error.message : text.error },
       ].slice(-12))
     } finally {
       setLoading(false)
@@ -511,19 +631,46 @@ export function AdminAssistant() {
       return
     }
 
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(speechText(content))
-    const voice = chooseVoice(voices, assistantLanguage)
-    if (voice) {
-      utterance.voice = voice
+    speakContent(content, index)
+  }
+
+  function toggleVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition || loading) return
+
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+      return
     }
-    utterance.lang = assistantLanguage === "es" ? "es-US" : "en-US"
-    utterance.rate = assistantLanguage === "es" ? 0.92 : 0.94
-    utterance.pitch = 1.03
-    utterance.onend = () => setSpeakingIndex(null)
-    utterance.onerror = () => setSpeakingIndex(null)
-    setSpeakingIndex(index)
-    window.speechSynthesis.speak(utterance)
+
+    const recognition = new SpeechRecognition()
+    recognitionRef.current = recognition
+    transcriptRef.current = ""
+    recognition.lang = assistantLanguage === "es" ? "es-US" : "en-US"
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.onresult = (event) => {
+      let transcript = ""
+      for (let index = 0; index < event.results.length; index += 1) {
+        transcript += event.results[index][0]?.transcript || ""
+      }
+      transcriptRef.current = transcript.trim()
+      setInput(transcriptRef.current)
+    }
+    recognition.onerror = () => {
+      setIsListening(false)
+    }
+    recognition.onend = () => {
+      setIsListening(false)
+      const transcript = transcriptRef.current.trim()
+      transcriptRef.current = ""
+      if (transcript) {
+        void submitQuestion(transcript, "voice")
+      }
+    }
+    setIsListening(true)
+    recognition.start()
   }
 
   return (
@@ -659,6 +806,23 @@ export function AdminAssistant() {
                 placeholder={text.placeholder}
                 className="max-h-28 min-h-11 resize-none text-sm"
               />
+              <Button
+                type="button"
+                size="icon"
+                variant={isListening ? "default" : "outline"}
+                className={cn(
+                  "h-11 w-11 shrink-0",
+                  isListening
+                    ? "bg-slate-950 text-white hover:bg-slate-800"
+                    : "border-orange-200 text-orange-700 hover:bg-orange-50",
+                )}
+                disabled={loading || !canUseVoiceInput}
+                aria-label={isListening ? text.stopVoiceInput : text.voiceInput}
+                title={isListening ? text.listening : text.voiceInput}
+                onClick={toggleVoiceInput}
+              >
+                {isListening ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+              </Button>
               <Button
                 type="submit"
                 size="icon"

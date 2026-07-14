@@ -17,6 +17,7 @@ interface AssistantRequest {
   language?: AssistantLanguage
   memory?: string[]
   token?: string
+  event?: "chat_opened" | "message"
 }
 
 function safeMessages(messages: AssistantChatMessage[]) {
@@ -90,7 +91,12 @@ export async function POST(req: NextRequest) {
       : []
     const summary = body.summary
     const panelLanguage: AssistantLanguage = body.language === "en" ? "en" : "es"
-    const latestQuestion = messages.filter((message) => message.role === "user").at(-1)?.content || ""
+    const isChatOpening = body.event === "chat_opened"
+    const latestQuestion = isChatOpening
+      ? panelLanguage === "es"
+        ? "El chat acaba de abrirse. Saluda como Ebenezer Assistant y ofrece ayuda de forma natural."
+        : "The chat just opened. Greet as Ebenezer Assistant and offer help naturally."
+      : messages.filter((message) => message.role === "user").at(-1)?.content || ""
     const language = detectAssistantLanguage(latestQuestion, panelLanguage)
 
     if (!summary || !latestQuestion.trim()) {
