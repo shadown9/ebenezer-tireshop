@@ -570,27 +570,35 @@ export function AdminAssistant() {
 
     try {
       const adminToken = window.localStorage.getItem("admin_token") || ""
-      const response = await fetch("/api/admin/assistant", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify({
-          messages: nextMessages,
-          summary,
-          language: assistantLanguage,
-          memory,
-          token: adminToken,
-        }),
-      })
+      const requestBody = {
+        messages: nextMessages,
+        summary,
+        language: assistantLanguage,
+        memory,
+        token: adminToken,
+      }
+      const sendAssistantRequest = (token: string, includeToken = true) =>
+        fetch("/api/admin/assistant", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            ...(includeToken && token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(includeToken ? requestBody : { ...requestBody, token: "" }),
+        })
+
+      let response = await sendAssistantRequest(adminToken)
+      if (response.status === 401) {
+        response = await sendAssistantRequest("", false)
+      }
       const data = await response.json()
       if (!response.ok) {
         const authMessage =
           assistantLanguage === "es"
-            ? "Tu sesion de admin parece vencida. Cierra sesion y vuelve a entrar para que pueda ayudarte con datos reales. Si, la seguridad a veces se pone intensa, pero aqui nos conviene."
-            : "Your admin session looks expired. Log out and log back in so I can help with real data. Security can be dramatic, but this time it is useful."
-        throw new Error(response.status === 401 ? authMessage : data?.error || authMessage)
+            ? "No pude validar la sesion para usar la IA conectada. El panel sigue abierto, pero vuelve a iniciar sesion para que el asistente lea datos reales."
+            : "I could not validate the session for connected AI. The panel is still open, but log in again so the assistant can read real data."
+        throw new Error(data?.error || authMessage)
       }
       const reply = data.reply || text.error
       setMode(data.mode === "ai" ? "ai" : "local")
@@ -676,7 +684,6 @@ export function AdminAssistant() {
     setIsListening(true)
     recognition.start()
   }
-
   return (
     <div className="fixed bottom-4 right-4 z-50 print:hidden sm:bottom-5 sm:right-5">
       {open ? (

@@ -3,13 +3,23 @@ import { getCurrentUser } from "@/lib/auth-server"
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get("authorization")?.replace("Bearer ", "") || request.cookies.get("admin_token")?.value
+    const tokenCandidates = [
+      request.cookies.get("admin_token")?.value,
+      request.headers.get("authorization")?.replace("Bearer ", ""),
+    ]
+      .map((token) => token?.trim())
+      .filter((token): token is string => Boolean(token))
+      .filter((token, index, tokens) => tokens.indexOf(token) === index)
 
-    if (!token) {
+    if (tokenCandidates.length === 0) {
       return NextResponse.json({ error: "Missing token" }, { status: 401 })
     }
 
-    const user = await getCurrentUser(token)
+    let user = null
+    for (const token of tokenCandidates) {
+      user = await getCurrentUser(token)
+      if (user) break
+    }
 
     if (!user) {
       return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 })

@@ -75,29 +75,6 @@ async function askNvidia({
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as AssistantRequest
-    const tokenCandidates = [
-      req.cookies.get("admin_token")?.value,
-      req.headers.get("authorization")?.replace("Bearer ", ""),
-      body.token,
-    ]
-      .map((token) => token?.trim())
-      .filter((token): token is string => Boolean(token))
-      .filter((token, index, tokens) => tokens.indexOf(token) === index)
-
-    if (tokenCandidates.length === 0) {
-      return NextResponse.json({ error: "Missing token" }, { status: 401 })
-    }
-
-    let user = null
-    for (const token of tokenCandidates) {
-      user = await getCurrentUser(token)
-      if (user) break
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 })
-    }
-
     const messages = Array.isArray(body.messages) ? body.messages : []
     const memory = Array.isArray(body.memory)
       ? body.memory.map((item) => String(item).slice(0, 500)).slice(-8)
@@ -111,6 +88,10 @@ export async function POST(req: NextRequest) {
         : "The chat just opened. Greet as Ebenezer Assistant and offer help naturally."
       : messages.filter((message) => message.role === "user").at(-1)?.content || ""
     const language = detectAssistantLanguage(latestQuestion, panelLanguage)
+    const openingFallback =
+      language === "es"
+        ? "Estoy listo por aqui. Dime si revisamos caja, facturas, inventario, citas, reportes o taxes y lo aterrizamos sin vueltas."
+        : "I am ready here. Tell me if we are checking cash, invoices, inventory, appointments, reports, or taxes and I will keep it practical."
 
     if (!summary || !latestQuestion.trim()) {
       return NextResponse.json(
@@ -125,11 +106,30 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const openingFallback =
-      language === "es"
-        ? "Estoy listo por aqui. Dime si revisamos caja, facturas, inventario, citas, reportes o taxes y lo aterrizamos sin vueltas."
-        : "I am ready here. Tell me if we are checking cash, invoices, inventory, appointments, reports, or taxes and I will keep it practical."
     const fallback = isChatOpening ? openingFallback : buildLocalAssistantReply(latestQuestion, summary, language)
+    const tokenCandidates = [
+      req.cookies.get("admin_token")?.value,
+      req.headers.get("authorization")?.replace("Bearer ", ""),
+      body.token,
+    ]
+      .map((token) => token?.trim())
+      .filter((token): token is string => Boolean(token))
+      .filter((token, index, tokens) => tokens.indexOf(token) === index)
+
+    if (tokenCandidates.length === 0) {
+      return NextResponse.json({ mode: "local", reply: fallback })
+    }
+
+    let user = null
+    for (const token of tokenCandidates) {
+      user = await getCurrentUser(token)
+      if (user) break
+    }
+
+    if (!user) {
+      return NextResponse.json({ mode: "local", reply: fallback })
+    }
+
     const nvidiaMessages: AssistantChatMessage[] = isChatOpening
       ? [{ role: "user", content: latestQuestion }]
       : messages
