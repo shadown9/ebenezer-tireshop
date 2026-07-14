@@ -31,6 +31,11 @@ function safeMessages(messages: AssistantChatMessage[]) {
     }))
 }
 
+function getNvidiaApiKey() {
+  const raw = process.env.NVIDIA_API_KEY?.trim() || ""
+  return raw.match(/nvapi-[A-Za-z0-9_-]+/)?.[0] || raw
+}
+
 async function askNvidia({
   messages,
   summary,
@@ -42,7 +47,7 @@ async function askNvidia({
   language: AssistantLanguage
   memory: string[]
 }) {
-  const apiKey = process.env.NVIDIA_API_KEY
+  const apiKey = getNvidiaApiKey()
   if (!apiKey) return null
 
   const baseUrl = process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1"
