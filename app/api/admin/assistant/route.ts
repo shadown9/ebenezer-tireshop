@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import {
   buildAdminAssistantSystemPrompt,
   buildLocalAssistantReply,
@@ -7,6 +7,7 @@ import {
   type AssistantChatMessage,
   type AssistantLanguage,
 } from "@/lib/admin-assistant"
+import { getCurrentUser } from "@/lib/auth-server"
 
 export const runtime = "nodejs"
 
@@ -65,8 +66,18 @@ async function askNvidia({
   return typeof content === "string" && content.trim() ? content.trim() : null
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const token = req.headers.get("authorization")?.replace("Bearer ", "")
+    if (!token) {
+      return NextResponse.json({ error: "Missing token" }, { status: 401 })
+    }
+
+    const user = await getCurrentUser(token)
+    if (!user) {
+      return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 })
+    }
+
     const body = (await req.json()) as AssistantRequest
     const messages = Array.isArray(body.messages) ? body.messages : []
     const summary = body.summary

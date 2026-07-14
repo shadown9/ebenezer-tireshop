@@ -330,7 +330,10 @@ export function AdminAssistant() {
     try {
       const response = await fetch("/api/admin/assistant", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${window.localStorage.getItem("admin_token") || ""}`,
+        },
         body: JSON.stringify({
           messages: nextMessages,
           summary,
