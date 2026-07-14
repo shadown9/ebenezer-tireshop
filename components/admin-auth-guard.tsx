@@ -3,7 +3,7 @@
 import type React from "react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { getCurrentUser } from "@/lib/auth-client"
+import { getCurrentUserWithRetry } from "@/lib/auth-client"
 
 export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -13,7 +13,7 @@ export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
     const checkAuth = async () => {
       const token = localStorage.getItem("admin_token")
 
-      const user = await getCurrentUser(token)
+      const user = await getCurrentUserWithRetry(token, 3)
       if (!user) {
         localStorage.removeItem("admin_token")
         localStorage.removeItem("admin_user")

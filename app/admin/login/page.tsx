@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShieldCheck, Loader2, Eye, EyeOff } from "lucide-react"
-import { getCurrentUser, login } from "@/lib/auth-client"
+import { getCurrentUserWithRetry, login } from "@/lib/auth-client"
 import Image from "next/image"
 
 export default function AdminLoginPage() {
@@ -24,7 +24,7 @@ export default function AdminLoginPage() {
   useEffect(() => {
     const checkExistingSession = async () => {
       const token = localStorage.getItem("admin_token")
-      const user = await getCurrentUser(token)
+      const user = await getCurrentUserWithRetry(token, 2)
 
       if (user) {
         localStorage.setItem("admin_user", JSON.stringify(user))

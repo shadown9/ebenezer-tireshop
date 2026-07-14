@@ -10,6 +10,7 @@ import {
 import { getCurrentUser } from "@/lib/auth-server"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 interface AssistantRequest {
   messages?: AssistantChatMessage[]
@@ -65,7 +66,10 @@ async function askNvidia({
     }),
   })
 
-  if (!response.ok) return null
+  if (!response.ok) {
+    console.warn("[admin-assistant] NVIDIA returned non-OK status:", response.status)
+    return null
+  }
 
   const data = await response.json()
   const content = data?.choices?.[0]?.message?.content
@@ -102,7 +106,7 @@ export async function POST(req: NextRequest) {
               ? "Hazme una pregunta sobre facturas, caja, inventario, citas, reportes o taxes."
               : "Ask me about invoices, cash, inventory, appointments, reports, or taxes.",
         },
-        { status: 200 },
+        { status: 200, headers: { "Cache-Control": "no-store" } },
       )
     }
 
@@ -117,7 +121,10 @@ export async function POST(req: NextRequest) {
       .filter((token, index, tokens) => tokens.indexOf(token) === index)
 
     if (tokenCandidates.length === 0) {
-      return NextResponse.json({ mode: "local", reply: fallback })
+      return NextResponse.json(
+        { mode: "local", reason: "missing-session", reply: fallback },
+        { headers: { "Cache-Control": "no-store" } },
+      )
     }
 
     let user = null
@@ -127,7 +134,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (!user) {
-      return NextResponse.json({ mode: "local", reply: fallback })
+      return NextResponse.json(
+        { mode: "local", reason: "invalid-session", reply: fallback },
+        { headers: { "Cache-Control": "no-store" } },
+      )
     }
 
     const nvidiaMessages: AssistantChatMessage[] = isChatOpening
@@ -137,13 +147,19 @@ export async function POST(req: NextRequest) {
     try {
       const aiReply = await askNvidia({ messages: nvidiaMessages, summary, language, memory })
       if (aiReply) {
-        return NextResponse.json({ mode: "ai", reply: aiReply })
+        return NextResponse.json(
+          { mode: "ai", reply: aiReply },
+          { headers: { "Cache-Control": "no-store" } },
+        )
       }
     } catch (error) {
       console.warn("[admin-assistant] NVIDIA fallback used:", error)
     }
 
-    return NextResponse.json({ mode: "local", reply: fallback })
+    return NextResponse.json(
+      { mode: "local", reason: "ai-unavailable", reply: fallback },
+      { headers: { "Cache-Control": "no-store" } },
+    )
   } catch (error) {
     console.error("[admin-assistant] request failed:", error)
     return NextResponse.json(
@@ -151,7 +167,7 @@ export async function POST(req: NextRequest) {
         mode: "local",
         reply: "No pude procesar esa pregunta ahora mismo. Intenta de nuevo con una pregunta mas corta.",
       },
-      { status: 200 },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
     )
   }
 }

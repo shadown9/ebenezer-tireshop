@@ -518,6 +518,8 @@ export function AdminAssistant() {
       const adminToken = window.localStorage.getItem("admin_token") || ""
       const response = await fetch("/api/admin/assistant", {
         method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${adminToken}`,
@@ -581,6 +583,7 @@ export function AdminAssistant() {
         fetch("/api/admin/assistant", {
           method: "POST",
           credentials: "same-origin",
+          cache: "no-store",
           headers: {
             "Content-Type": "application/json",
             ...(includeToken && token ? { Authorization: `Bearer ${token}` } : {}),

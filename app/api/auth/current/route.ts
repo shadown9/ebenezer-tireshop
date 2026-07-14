@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth-server"
 
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
 export async function GET(request: NextRequest) {
   try {
     const tokenCandidates = [
@@ -12,7 +15,7 @@ export async function GET(request: NextRequest) {
       .filter((token, index, tokens) => tokens.indexOf(token) === index)
 
     if (tokenCandidates.length === 0) {
-      return NextResponse.json({ error: "Missing token" }, { status: 401 })
+      return NextResponse.json({ error: "Missing token" }, { status: 401, headers: { "Cache-Control": "no-store" } })
     }
 
     let user = null
@@ -22,12 +25,18 @@ export async function GET(request: NextRequest) {
     }
 
     if (!user) {
-      return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 })
+      return NextResponse.json(
+        { error: "Invalid or expired session" },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      )
     }
 
-    return NextResponse.json({ user })
+    return NextResponse.json({ user }, { headers: { "Cache-Control": "no-store" } })
   } catch (error) {
     console.error("[v0] Get current user error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
+    )
   }
 }
