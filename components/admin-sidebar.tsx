@@ -126,6 +126,9 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
     localStorage.removeItem("admin_token")
     localStorage.removeItem("admin_user")
     localStorage.removeItem("ebenezer-admin-assistant-thread")
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith("ebenezer-admin-assistant-thread:"))
+      .forEach((key) => localStorage.removeItem(key))
     if (onNavigate) onNavigate()
     router.push("/admin/login")
   }
@@ -151,9 +154,11 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
           <div className="mt-3 pt-3 border-t border-white/20">
             <div className="flex items-center justify-between">
               <span className="text-sm text-white/90">{currentUser.name}</span>
-              <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                {ROLE_NAMES[currentUser.role]}
-              </Badge>
+              {currentUser.name.trim().toLowerCase() !== ROLE_NAMES[currentUser.role].trim().toLowerCase() ? (
+                <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                  {ROLE_NAMES[currentUser.role]}
+                </Badge>
+              ) : null}
             </div>
           </div>
         )}

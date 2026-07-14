@@ -116,6 +116,12 @@ function getMemoryStorageKey(user: AdminUser | null) {
   return `${MEMORY_STORAGE_KEY}:${id}`
 }
 
+function getVisibleChatStorageKey() {
+  if (typeof window === "undefined") return STORAGE_KEY
+  const token = window.localStorage.getItem("admin_token") || "no-session"
+  return `${STORAGE_KEY}:${token.slice(0, 12)}`
+}
+
 function chooseVoice(voices: SpeechSynthesisVoice[], language: "es" | "en") {
   const preferredSpanish = ["google español", "google us spanish", "paulina", "monica", "sabina", "luciana", "jorge"]
   const preferredEnglish = ["google us english", "microsoft aria", "microsoft jenny", "samantha", "alex", "daniel"]
@@ -344,7 +350,7 @@ export function AdminAssistant() {
     }
 
     try {
-      const saved = window.localStorage.getItem(STORAGE_KEY)
+      const saved = window.localStorage.getItem(getVisibleChatStorageKey())
       const parsed = saved ? (JSON.parse(saved) as AssistantChatMessage[]) : []
       return Array.isArray(parsed) && parsed.length > 0
         ? parsed.slice(-12)
@@ -360,7 +366,7 @@ export function AdminAssistant() {
   }, [assistantLanguage])
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-12)))
+    window.localStorage.setItem(getVisibleChatStorageKey(), JSON.stringify(messages.slice(-12)))
   }, [messages])
 
   useEffect(() => {
