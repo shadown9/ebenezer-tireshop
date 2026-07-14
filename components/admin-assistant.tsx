@@ -544,24 +544,31 @@ export function AdminAssistant() {
 
     try {
       const adminToken = window.localStorage.getItem("admin_token") || ""
-      const response = await fetch("/api/admin/assistant", {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify({
-          event: "chat_opened",
-          messages: [],
-          summary,
-          language: assistantLanguage,
-          memory,
-          token: adminToken,
-        }),
-      })
-      const data = await response.json().catch(() => null)
+      const requestBody = {
+        event: "chat_opened" as const,
+        messages: [],
+        summary,
+        language: assistantLanguage,
+        memory,
+      }
+      const sendAssistantRequest = (token = "") =>
+        fetch("/api/admin/assistant", {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ ...requestBody, token }),
+        })
+
+      let response = await sendAssistantRequest()
+      let data = await response.json().catch(() => null)
+      if ((data?.reason === "missing-session" || data?.reason === "invalid-session") && adminToken) {
+        response = await sendAssistantRequest(adminToken)
+        data = await response.json().catch(() => null)
+      }
       const fallbackReply =
         assistantLanguage === "es"
           ? "Estoy listo por aqui. Dime si revisamos caja, facturas, inventario, citas, reportes o taxes y lo aterrizamos sin vueltas."
@@ -607,7 +614,6 @@ export function AdminAssistant() {
         summary,
         language: assistantLanguage,
         memory,
-        token: "",
       }
       const sendAssistantRequest = (token: string, includeToken = true) =>
         fetch("/api/admin/assistant", {
@@ -618,14 +624,18 @@ export function AdminAssistant() {
             "Content-Type": "application/json",
             ...(includeToken && token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify(includeToken ? requestBody : { ...requestBody, token: "" }),
+          body: JSON.stringify({ ...requestBody, token: includeToken ? token : "" }),
         })
 
       let response = await sendAssistantRequest("", false)
-      if (response.status === 401) {
+      let data = await response.json().catch(() => null)
+      if (
+        (response.status === 401 || data?.reason === "missing-session" || data?.reason === "invalid-session") &&
+        adminToken
+      ) {
         response = await sendAssistantRequest(adminToken)
+        data = await response.json().catch(() => null)
       }
-      const data = await response.json()
       if (!response.ok) {
         const authMessage =
           assistantLanguage === "es"

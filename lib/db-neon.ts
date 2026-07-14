@@ -265,18 +265,57 @@ export async function createDefaultUserPreferences(userId: string): Promise<User
   return preferences
 }
 
-// Session storage (in-memory for now - could be moved to Redis)
-const sessions = new Map<string, LoginSession>()
+let sessionsTableReady: Promise<void> | null = null
+
+function ensureSessionsTable() {
+  if (!sessionsTableReady) {
+    sessionsTableReady = sql`
+      CREATE TABLE IF NOT EXISTS admin_login_sessions (
+        token TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL
+      )
+    `.then(() => undefined)
+  }
+
+  return sessionsTableReady
+}
 
 // Session management exports
 export async function createSession(session: LoginSession): Promise<void> {
-  sessions.set(session.token, session)
+  await ensureSessionsTable()
+  await sql`
+    INSERT INTO admin_login_sessions (token, user_id, created_at, expires_at)
+    VALUES (${session.token}, ${session.userId}, ${session.createdAt}, ${session.expiresAt})
+    ON CONFLICT (token)
+    DO UPDATE SET
+      user_id = EXCLUDED.user_id,
+      created_at = EXCLUDED.created_at,
+      expires_at = EXCLUDED.expires_at
+  `
 }
 
 export async function getSession(token: string): Promise<LoginSession | undefined> {
-  return sessions.get(token)
+  await ensureSessionsTable()
+  const result = await sql`
+    SELECT
+      token,
+      user_id as "userId",
+      created_at as "createdAt",
+      expires_at as "expiresAt"
+    FROM admin_login_sessions
+    WHERE token = ${token}
+    LIMIT 1
+  `
+
+  return result[0] as LoginSession | undefined
 }
 
 export async function deleteSession(token: string): Promise<void> {
-  sessions.delete(token)
+  await ensureSessionsTable()
+  await sql`
+    DELETE FROM admin_login_sessions
+    WHERE token = ${token}
+  `
 }
