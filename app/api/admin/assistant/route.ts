@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import {
   buildAdminAssistantSystemPrompt,
   buildLocalAssistantReply,
+  detectAssistantLanguage,
   type AdminAssistantSummary,
   type AssistantChatMessage,
   type AssistantLanguage,
@@ -69,8 +70,9 @@ export async function POST(req: Request) {
     const body = (await req.json()) as AssistantRequest
     const messages = Array.isArray(body.messages) ? body.messages : []
     const summary = body.summary
-    const language: AssistantLanguage = body.language === "en" ? "en" : "es"
+    const panelLanguage: AssistantLanguage = body.language === "en" ? "en" : "es"
     const latestQuestion = messages.filter((message) => message.role === "user").at(-1)?.content || ""
+    const language = detectAssistantLanguage(latestQuestion, panelLanguage)
 
     if (!summary || !latestQuestion.trim()) {
       return NextResponse.json(

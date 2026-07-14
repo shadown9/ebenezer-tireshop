@@ -62,6 +62,58 @@ function normalize(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
 }
 
+export function detectAssistantLanguage(question: string, fallback: AssistantLanguage = "es"): AssistantLanguage {
+  const q = normalize(question)
+  const spanishSignals = [
+    "hola",
+    "espanol",
+    "español",
+    "hablas",
+    "sabes",
+    "puedes",
+    "quiero",
+    "necesito",
+    "factura",
+    "caja",
+    "goma",
+    "gomas",
+    "servicio",
+    "cita",
+    "inventario",
+    "reporte",
+    "busca",
+    "como",
+    "que",
+    "cuanto",
+    "donde",
+  ]
+  const englishSignals = [
+    "hello",
+    "english",
+    "speak",
+    "can you",
+    "need",
+    "invoice",
+    "cash",
+    "tire",
+    "tires",
+    "appointment",
+    "inventory",
+    "report",
+    "search",
+    "how",
+    "what",
+    "where",
+  ]
+
+  const spanishScore = spanishSignals.reduce((score, word) => score + (q.includes(normalize(word)) ? 1 : 0), 0)
+  const englishScore = englishSignals.reduce((score, word) => score + (q.includes(word) ? 1 : 0), 0)
+
+  if (spanishScore > englishScore) return "es"
+  if (englishScore > spanishScore) return "en"
+  return fallback
+}
+
 function routeGuide(path: string, language: AssistantLanguage) {
   const guides = {
     es: [
@@ -124,6 +176,9 @@ export function buildAdminAssistantSystemPrompt(summary: AdminAssistantSummary, 
       ? "Eres el ayudante interno de Ebenezer Tireshop para el panel administrativo. Tienes personalidad amable, segura y un poco sarcastica de forma ligera, sin palabras ofensivas, sin humillar al usuario y sin perder profesionalismo. Responde claro, corto y practico."
       : "You are the internal admin helper for Ebenezer Tireshop. You are friendly, confident, and lightly sarcastic in a clean way, with no offensive language, no putting the user down, and no loss of professionalism. Answer clearly, briefly, and practically.",
     "Use only the provided business summary and the app guide. Do not invent totals, invoices, customers, taxes, or inventory.",
+    language === "es"
+      ? "Responde en espanol cuando el usuario escriba en espanol, aunque el panel este en ingles. Si el usuario cambia a ingles, responde en ingles."
+      : "Answer in English when the user writes in English. If the user switches to Spanish, answer in Spanish.",
     "You cannot change, delete, refund, close, or create records. You may guide the admin to the correct screen.",
     "Never ask for passwords or secrets. Do not expose API keys.",
     `Current route guide: ${routeGuide(summary.currentPath, language)}`,
@@ -140,6 +195,24 @@ export function buildLocalAssistantReply(
   const isSpanish = language === "es"
   const matches = findInventoryMatches(question, summary)
   const location = routeGuide(summary.currentPath, language)
+
+  if (/\b(hola|hello|hi|buenas|saludos)\b/.test(q) && q.length <= 30) {
+    return isSpanish
+      ? "Hola, claro. Estoy aqui para ayudarte con el admin sin hacer desastres creativos. Puedes preguntarme por inventario, caja, facturas, citas, servicios, reportes o taxes."
+      : "Hi, absolutely. I am here to help with the admin without creating creative disasters. You can ask about inventory, cash, invoices, appointments, services, reports, or taxes."
+  }
+
+  if (/\b(hablas|sabes hablar|puedes hablar|espanol|español|spanish|speak spanish)\b/.test(q)) {
+    return isSpanish
+      ? "Si, hablo espanol. Tambien puedo responder en ingles si me escribes en ingles. El panel puede estar en un idioma, pero yo sigo el idioma de tu pregunta, que seria lo normal... y por fin lo estamos haciendo bien."
+      : "Yes, I can speak Spanish. I can also answer in English when you write in English. The panel can be in one language, but I follow the language of your question, which is the sensible thing to do."
+  }
+
+  if (/\b(quien eres|que eres|que puedes hacer|ayuda|help|what can you do|who are you)\b/.test(q)) {
+    return isSpanish
+      ? `Soy el ayudante del admin de Ebenezer Tireshop. Puedo leer resumenes de inventario, facturas, caja, citas, servicios y reportes para orientarte rapido. No hago cambios automaticos, porque una IA con boton de borrar sin permiso seria una novela de terror administrativa.\n\n${location}`
+      : `I am the Ebenezer Tireshop admin helper. I can read summaries for inventory, invoices, cash, appointments, services, and reports so I can guide you quickly. I do not make automatic changes, because an AI with a delete button and no permission would be an admin horror story.\n\n${location}`
+  }
 
   if (/\b(delete|remove|refund|void|close|cerrar|borrar|eliminar|reembols|anular|cambiar|actualizar|crear)\b/.test(q)) {
     return isSpanish
