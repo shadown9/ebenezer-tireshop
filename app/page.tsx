@@ -106,7 +106,7 @@ export default function HomePage() {
                 {t("findPerfectTires")}
               </h2>
               <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto">
-                Search by tire size or vehicle to find the best match for your needs
+                {t("searchTiresDescription")}
               </p>
             </div>
 
@@ -120,11 +120,11 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="mb-12">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              {hasSearched ? "Search Results" : t("featuredTires")}
+              {hasSearched ? t("searchResults") : t("featuredTires")}
             </h2>
             <p className="text-muted-foreground text-lg">
               {hasSearched
-                ? `Found ${searchResults.length} tire${searchResults.length !== 1 ? "s" : ""} matching your search`
+                ? t("foundTires").replace("{count}", searchResults.length.toString())
                 : t("popularTires")}
             </p>
           </div>
@@ -138,9 +138,9 @@ export default function HomePage() {
           ) : (
             <Card className="p-8 text-center">
               <CardContent>
-                <p className="text-muted-foreground text-lg">No tires found matching your search criteria.</p>
+                <p className="text-muted-foreground text-lg">{t("noTiresFound")}</p>
                 <Button onClick={() => setSearchResults(tires.slice(0, 6))} className="mt-4">
-                  View All Tires
+                  {t("viewAllTires")}
                 </Button>
               </CardContent>
             </Card>
@@ -160,7 +160,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
             <div className="inline-block bg-primary/10 px-4 py-2 rounded-full mb-4">
-              <span className="text-primary font-semibold text-sm">WHAT WE OFFER</span>
+              <span className="text-primary font-semibold text-sm uppercase">{t("whatWeOffer")}</span>
             </div>
             <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6 text-balance">{t("ourServices")}</h2>
             <p className="text-muted-foreground text-lg md:text-xl leading-relaxed max-w-3xl mx-auto">
@@ -174,9 +174,9 @@ export default function HomePage() {
                 <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg group-hover:shadow-primary/50 group-hover:scale-110 transition-all duration-300">
                   <Wrench className="h-8 w-8 text-primary-foreground" />
                 </div>
-                <h3 className="font-bold text-lg mb-2 text-foreground">Tire Services</h3>
+                <h3 className="font-bold text-lg mb-2 text-foreground">{t("tireServices")}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  Professional tire mounting, balancing, rotation, and flat repair services
+                  {t("tireServicesDescription")}
                 </p>
               </CardContent>
             </Card>
@@ -186,9 +186,9 @@ export default function HomePage() {
                 <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg group-hover:shadow-primary/50 group-hover:scale-110 transition-all duration-300">
                   <Shield className="h-8 w-8 text-primary-foreground" />
                 </div>
-                <h3 className="font-bold text-lg mb-2 text-foreground">Brake Service</h3>
+                <h3 className="font-bold text-lg mb-2 text-foreground">{t("brakeService")}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  Complete brake pad replacement and disc resurfacing for optimal safety
+                  {t("brakeServiceDescription")}
                 </p>
               </CardContent>
             </Card>
@@ -198,9 +198,9 @@ export default function HomePage() {
                 <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg group-hover:shadow-primary/50 group-hover:scale-110 transition-all duration-300">
                   <CheckCircle className="h-8 w-8 text-primary-foreground" />
                 </div>
-                <h3 className="font-bold text-lg mb-2 text-foreground">Oil Change</h3>
+                <h3 className="font-bold text-lg mb-2 text-foreground">{t("oilChange")}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  Fast and professional oil change service to keep your engine running smoothly
+                  {t("oilChangeDescription")}
                 </p>
               </CardContent>
             </Card>
@@ -210,9 +210,9 @@ export default function HomePage() {
                 <div className="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg group-hover:shadow-primary/50 group-hover:scale-110 transition-all duration-300">
                   <Clock className="h-8 w-8 text-primary-foreground" />
                 </div>
-                <h3 className="font-bold text-lg mb-2 text-foreground">Quick Service</h3>
+                <h3 className="font-bold text-lg mb-2 text-foreground">{t("quickService")}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  Same-day appointments available for your convenience and time
+                  {t("quickServiceDescription")}
                 </p>
               </CardContent>
             </Card>
@@ -242,12 +242,12 @@ export default function HomePage() {
                 <span className="text-2xl font-bold">{businessInfo?.business_name || "Ebenezer Tireshop"}</span>
               </div>
               <p className="text-sm text-secondary-foreground/80 mb-4">
-                {businessInfo?.tagline || "Professional Tire Shop & Auto Service"}
+                {businessInfo?.tagline || t("professionalAutoService")}
               </p>
             </div>
 
             <div>
-              <h3 className="font-bold text-lg mb-4">Contact Us</h3>
+              <h3 className="font-bold text-lg mb-4">{t("contactUs")}</h3>
               <div className="space-y-2 text-sm text-secondary-foreground/80">
                 <p>{businessInfo?.address || "507 Hawthone Ave"}</p>
                 <p>
@@ -260,25 +260,25 @@ export default function HomePage() {
             </div>
 
             <div>
-              <h3 className="font-bold text-lg mb-4">Quick Links</h3>
+              <h3 className="font-bold text-lg mb-4">{t("quickLinks")}</h3>
               <div className="space-y-2 text-sm">
                 <Link
                   href="/#search"
                   className="block text-secondary-foreground/80 hover:text-primary transition-colors"
                 >
-                  Find Tires
+                  {t("findTires")}
                 </Link>
                 <Link
                   href="/#services"
                   className="block text-secondary-foreground/80 hover:text-primary transition-colors"
                 >
-                  Services
+                  {t("services")}
                 </Link>
                 <Link href="/book" className="block text-secondary-foreground/80 hover:text-primary transition-colors">
-                  Book Service
+                  {t("bookService")}
                 </Link>
                 <Link href="/track" className="block text-secondary-foreground/80 hover:text-primary transition-colors">
-                  Track Order
+                  {t("track")}
                 </Link>
               </div>
             </div>
@@ -286,7 +286,7 @@ export default function HomePage() {
 
           <div className="border-t border-secondary-foreground/10 mt-12 pt-8 text-center">
             <p className="text-sm text-secondary-foreground/80">
-              © 2025 {businessInfo?.business_name || "Ebenezer Tireshop"}. All rights reserved.
+              © 2025 {businessInfo?.business_name || "Ebenezer Tireshop"}. {t("allRightsReserved")}
             </p>
           </div>
         </div>

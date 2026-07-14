@@ -63,7 +63,7 @@ export function PublicHeader() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gradient">Ebenezer Tireshop</h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">Professional Auto Service</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">{t("professionalAutoService")}</p>
             </div>
           </a>
 
@@ -121,7 +121,7 @@ export function PublicHeader() {
                       <Image src="/logo.png" alt="Logo" fill className="object-contain" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-primary-foreground">Menu</h2>
+                      <h2 className="text-xl font-bold text-primary-foreground">{t("menu")}</h2>
                       <p className="text-xs text-primary-foreground/80">Ebenezer Tireshop</p>
                     </div>
                   </div>
@@ -139,7 +139,7 @@ export function PublicHeader() {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{t("findTires")}</p>
-                      <p className="text-xs text-muted-foreground">Search our tire inventory</p>
+                      <p className="text-xs text-muted-foreground">{t("searchInventoryDescription")}</p>
                     </div>
                   </Link>
 
@@ -153,7 +153,7 @@ export function PublicHeader() {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{t("services")}</p>
-                      <p className="text-xs text-muted-foreground">View all our services</p>
+                      <p className="text-xs text-muted-foreground">{t("viewServicesDescription")}</p>
                     </div>
                   </Link>
 
@@ -167,7 +167,7 @@ export function PublicHeader() {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{t("bookService")}</p>
-                      <p className="text-xs text-muted-foreground">Schedule an appointment</p>
+                      <p className="text-xs text-muted-foreground">{t("scheduleAppointmentDescription")}</p>
                     </div>
                   </Link>
 
@@ -181,7 +181,7 @@ export function PublicHeader() {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{t("track")}</p>
-                      <p className="text-xs text-muted-foreground">Track your service order</p>
+                      <p className="text-xs text-muted-foreground">{t("trackOrderDescription")}</p>
                     </div>
                   </Link>
 
@@ -197,7 +197,7 @@ export function PublicHeader() {
 
                   {/* Contact info */}
                   <div className="mt-8 p-4 bg-muted/50 rounded-lg">
-                    <h3 className="font-semibold text-sm mb-3 text-foreground">Contact Us</h3>
+                    <h3 className="font-semibold text-sm mb-3 text-foreground">{t("contactUs")}</h3>
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <p className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-primary" />

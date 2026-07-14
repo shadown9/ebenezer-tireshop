@@ -22,10 +22,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { generateTrackingNumber } from "@/lib/mock-data"
 import { X } from "lucide-react"
 import { CheckCircle2 } from "lucide-react"
+import { useTranslations } from "@/lib/translations"
 
 interface BookingWizardProps {
   preselectedTireId?: string | null
-  onClose: () => void
+  onClose?: () => void
 }
 
 type WizardStep = {
@@ -35,18 +36,28 @@ type WizardStep = {
 
 type WizardStepId = "services" | "vehicle" | "datetime" | "contact" | "confirmation"
 
-const steps: WizardStep[] = [
-  { id: "services", label: "Select Services" },
-  { id: "vehicle", label: "Vehicle Information" },
-  { id: "datetime", label: "Choose Date & Time" },
-  { id: "contact", label: "Contact Information" },
-  { id: "confirmation", label: "Confirm Booking" },
-]
+const stepIds: WizardStepId[] = ["services", "vehicle", "datetime", "contact", "confirmation"]
 
 export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps) {
   const { services: firebaseServices, loading: servicesLoading } = useServices()
   const { toast } = useToast()
   const router = useRouter()
+  const { t, language } = useTranslations()
+  const dateLocale = language === "es" ? "es-ES" : "en-US"
+
+  const steps: WizardStep[] = stepIds.map((id) => ({
+    id,
+    label:
+      id === "services"
+        ? t("selectServices")
+        : id === "vehicle"
+          ? t("vehicleInfo")
+          : id === "datetime"
+            ? t("chooseDate")
+            : id === "contact"
+              ? t("contactInformation")
+              : t("confirmBooking"),
+  }))
 
   const availableServices = firebaseServices.length > 0 ? firebaseServices : mockServices
 
@@ -111,7 +122,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
     if (currentStep === "services") {
       if (selectedServices.length === 0) {
         toast({
-          title: "Please select at least one service",
+          title: t("selectAtLeastOneService"),
           variant: "destructive",
         })
         return
@@ -119,8 +130,8 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
 
       if (hasDiscResurfacing && !selectedRotorOption) {
         toast({
-          title: "Please select number of rotors",
-          description: "Disc resurfacing requires you to specify 2 or 4 rotors",
+          title: t("selectNumberOfRotors"),
+          description: t("rotorRequiredDescription"),
           variant: "destructive",
         })
         return
@@ -134,8 +145,8 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
     } else if (currentStep === "vehicle") {
       if (!vehicleInfo.make || !vehicleInfo.model) {
         toast({
-          title: "Vehicle information required",
-          description: "Please enter your vehicle make and model",
+          title: t("vehicleInfoRequired"),
+          description: t("enterVehicleMakeModel"),
           variant: "destructive",
         })
         return
@@ -144,7 +155,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
     } else if (currentStep === "datetime") {
       if (!selectedDate || !selectedTime) {
         toast({
-          title: "Please select date and time",
+          title: t("selectDateTimeRequired"),
           variant: "destructive",
         })
         return
@@ -153,8 +164,8 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
     } else if (currentStep === "contact") {
       if (!contactInfo.name || !contactInfo.email || !contactInfo.phone) {
         toast({
-          title: "Please fill in all contact information",
-          description: "Please enter your name, email, and phone number",
+          title: t("fillContactInfo"),
+          description: t("enterNameEmailPhone"),
           variant: "destructive",
         })
         return
@@ -229,7 +240,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
       try {
         await addDoc(collection(db, "notifications"), {
           type: "appointment",
-          title: "Nueva Cita Reservada",
+        title: "Nueva Cita Reservada",
           message: `${contactInfo.name} ha reservado una cita para ${appointment.date} a las ${appointment.time}`,
           priority: "high",
           read: false,
@@ -245,15 +256,15 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
       }
 
       toast({
-        title: "Cita Agendada!",
-        description: `Tu número de rastreo es: ${appointment.trackingNumber}`,
+        title: t("appointmentBooked"),
+        description: `${t("trackingNumberIs")}: ${appointment.trackingNumber}`,
         duration: 8000,
       })
     } catch (error) {
 
       toast({
         title: "Error",
-        description: "No se pudo agendar la cita. Intenta de nuevo.",
+        description: t("bookingError"),
         variant: "destructive",
       })
     }
@@ -310,22 +321,22 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
             </div>
 
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Cita Confirmada!</h2>
-              <p className="text-muted-foreground">Tu cita ha sido agendada exitosamente</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">{t("appointmentConfirmedTitle")}</h2>
+              <p className="text-muted-foreground">{t("appointmentConfirmedDescription")}</p>
             </div>
 
             <div className="bg-muted/50 p-6 rounded-lg">
-              <p className="text-sm text-muted-foreground mb-2">Tu Número de Rastreo</p>
+              <p className="text-sm text-muted-foreground mb-2">{t("trackingNumberIs")}</p>
               <p className="text-3xl font-bold font-mono text-primary tracking-wider">{trackingNumber}</p>
-              <p className="text-xs text-muted-foreground mt-3">Guarda este número para rastrear tu servicio</p>
+              <p className="text-xs text-muted-foreground mt-3">{t("saveThisNumber")}</p>
             </div>
 
             <div className="space-y-3">
               <Button onClick={() => (window.location.href = `/track?tracking=${trackingNumber}`)} className="w-full">
-                Rastrear Mi Servicio
+                {t("trackMyService")}
               </Button>
               <Button variant="outline" onClick={() => (window.location.href = "/")} className="w-full">
-                Volver al Inicio
+                {t("backToHome")}
               </Button>
             </div>
           </div>
@@ -338,13 +349,13 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
     <Card className="w-full max-w-3xl mx-auto border-border/50 shadow-lg">
       <CardHeader className="border-b border-border/50 pb-4">
         <div className="flex items-center justify-between mb-4">
-          <CardTitle className="text-xl sm:text-2xl font-bold text-foreground">Book Your Service</CardTitle>
-          <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-accent">
+          <CardTitle className="text-xl sm:text-2xl font-bold text-foreground">{t("bookYourService")}</CardTitle>
+          <Button variant="ghost" size="icon" onClick={onClose ?? (() => router.push("/"))} className="hover:bg-accent">
             <X className="h-5 w-5" />
           </Button>
         </div>
         <CardDescription className="text-sm sm:text-base text-muted-foreground">
-          Schedule your appointment in just a few simple steps
+          {t("simpleBookingSteps")}
         </CardDescription>
       </CardHeader>
 
@@ -397,8 +408,8 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
           <div className="w-full max-w-2xl mx-auto p-4 sm:p-6">
             <Card className="border-border/50">
               <CardHeader className="space-y-1 pb-4">
-                <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">Select Services</h3>
-                <p className="text-sm text-muted-foreground">Choose the services you need for your vehicle</p>
+                <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">{t("selectServices")}</h3>
+                <p className="text-sm text-muted-foreground">{t("chooseServicesNeeded")}</p>
               </CardHeader>
               <CardContent className="space-y-4 sm:space-y-6">
                 <Tabs
@@ -408,19 +419,19 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                 >
                   <TabsList className="grid w-full grid-cols-3 mb-6">
                     <TabsTrigger value="tire" className="text-xs sm:text-sm">
-                      Tire
+                      {t("tire")}
                     </TabsTrigger>
                     <TabsTrigger value="mechanical" className="text-xs sm:text-sm">
-                      Mechanical
+                      {t("mechanical")}
                     </TabsTrigger>
                     <TabsTrigger value="specialty" className="text-xs sm:text-sm">
-                      Specialty
+                      {t("specialty")}
                     </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="tire" className="space-y-4 mt-0">
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-foreground">Tire Services</h3>
+                      <h3 className="font-semibold text-foreground">{t("tireServices")}</h3>
                       {availableServices
                         .filter((s) => s.category === "tire")
                         .map((service) => (
@@ -443,7 +454,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
 
                   <TabsContent value="mechanical" className="space-y-4 mt-0">
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-foreground">Mechanical Services</h3>
+                      <h3 className="font-semibold text-foreground">{t("mechanicalServices")}</h3>
                       {availableServices
                         .filter((s) => s.category === "mechanic")
                         .map((service) => (
@@ -460,7 +471,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                               <p className="text-sm text-muted-foreground">${service.basePrice}</p>
                               {service.requiresVehicleInfo && (
                                 <Badge variant="secondary" className="mt-1 text-xs">
-                                  Requires vehicle info
+                                  {t("requiresVehicleInfo")}
                                 </Badge>
                               )}
                             </div>
@@ -471,7 +482,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
 
                   <TabsContent value="specialty" className="space-y-4 mt-0">
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-foreground">Specialty Services</h3>
+                      <h3 className="font-semibold text-foreground">{t("specialtyServices")}</h3>
                       {availableServices
                         .filter((s) => s.category === "specialty")
                         .map((service) => (
@@ -489,7 +500,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                                 <p className="text-sm text-muted-foreground">${service.basePrice}</p>
                                 {service.requiresVehicleInfo && (
                                   <Badge variant="secondary" className="mt-1 text-xs">
-                                    Requires vehicle info
+                                    {t("requiresVehicleInfo")}
                                   </Badge>
                                 )}
                               </div>
@@ -497,7 +508,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
 
                             {service.id === "disc-resurfacing" && selectedServices.includes(service.id) && (
                               <div className="ml-9 p-3 bg-muted/50 rounded-lg space-y-2">
-                                <Label className="text-sm font-medium">Select number of rotors</Label>
+                                <Label className="text-sm font-medium">{t("selectNumberOfRotorsLabel")}</Label>
                                 <RadioGroup
                                   value={selectedRotorOption}
                                   onValueChange={(value) => {
@@ -511,13 +522,13 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                                   <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="2-rotors" id="2-rotors" />
                                     <Label htmlFor="2-rotors" className="cursor-pointer">
-                                      2 Rotors
+                                      {t("twoRotors")}
                                     </Label>
                                   </div>
                                   <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="4-rotors" id="4-rotors" />
                                     <Label htmlFor="4-rotors" className="cursor-pointer">
-                                      4 Rotors
+                                      {t("fourRotors")}
                                     </Label>
                                   </div>
                                 </RadioGroup>
@@ -531,7 +542,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
 
                 {selectedServices.length > 0 && (
                   <div className="bg-muted p-3 sm:p-4 rounded-lg">
-                    <h4 className="font-semibold text-foreground mb-2 text-sm sm:text-base">Selected Services:</h4>
+                    <h4 className="font-semibold text-foreground mb-2 text-sm sm:text-base">{t("selectedServices")}:</h4>
                     <div className="space-y-2">
                       {selectedServices.map((serviceId) => {
                         const service = availableServices.find((s) => s.id === serviceId)
@@ -552,7 +563,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                         )
                       })}
                       <div className="flex justify-between font-bold text-base sm:text-lg pt-2 border-t">
-                        <span className="text-foreground">Total</span>
+                        <span className="text-foreground">{t("total")}</span>
                         <span className="text-primary text-xl">${calculateTotal()}</span>
                       </div>
                     </div>
@@ -566,11 +577,11 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
         {/* Vehicle Information - Only show if required */}
         {currentStep === "vehicle" && requiresVehicleInfo && (
           <div className="space-y-4">
-            <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">Vehicle Information</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">{t("vehicleInfo")}</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="year">Year *</Label>
+                <Label htmlFor="year">{t("year")} *</Label>
                 <Input
                   id="year"
                   type="number"
@@ -581,7 +592,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="make">Make *</Label>
+                <Label htmlFor="make">{t("make")} *</Label>
                 <Input
                   id="make"
                   value={vehicleInfo.make}
@@ -591,7 +602,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="model">Model *</Label>
+                <Label htmlFor="model">{t("model")} *</Label>
                 <Input
                   id="model"
                   value={vehicleInfo.model}
@@ -601,7 +612,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="engine">Engine (Optional)</Label>
+                <Label htmlFor="engine">{t("engineOptional")}</Label>
                 <Input
                   id="engine"
                   value={vehicleInfo.engine}
@@ -616,11 +627,11 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
         {/* Date & Time Selection */}
         {currentStep === "datetime" && (
           <div className="space-y-4">
-            <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">Select Date & Time</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">{t("chooseDate")}</h3>
 
             {!selectedDate ? (
               <div>
-                <Label className="text-sm sm:text-base">Choose a Date *</Label>
+                <Label className="text-sm sm:text-base">{t("chooseADate")} *</Label>
                 <div className="mt-2 w-full overflow-x-auto">
                   <Calendar
                     mode="single"
@@ -639,7 +650,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
               <div className="space-y-4">
                 <div className="flex items-center justify-between bg-muted p-3 sm:p-4 rounded-lg">
                   <span className="text-sm sm:text-base font-medium text-foreground">
-                    {selectedDate.toLocaleDateString("en-US", {
+                    {selectedDate.toLocaleDateString(dateLocale, {
                       weekday: "long",
                       year: "numeric",
                       month: "long",
@@ -647,12 +658,12 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                     })}
                   </span>
                   <Button variant="ghost" size="sm" onClick={() => setSelectedDate(undefined)}>
-                    Change
+                    {t("change")}
                   </Button>
                 </div>
 
                 <div>
-                  <Label className="text-sm sm:text-base">Select Time *</Label>
+                  <Label className="text-sm sm:text-base">{t("selectTime")} *</Label>
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mt-2">
                     {availableTimes
                       .filter((time) => {
@@ -692,11 +703,11 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
         {/* Contact Info */}
         {currentStep === "contact" && (
           <div className="space-y-4">
-            <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">Your Contact Information</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">{t("contactInformation")}</h3>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
+                <Label htmlFor="name">{t("fullName")} *</Label>
                 <Input
                   id="name"
                   value={contactInfo.name}
@@ -723,7 +734,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number *</Label>
+                <Label htmlFor="phone">{t("phoneNumber")} *</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -742,11 +753,11 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
         {/* Confirmation */}
         {currentStep === "confirmation" && (
           <div className="space-y-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">Confirm Your Appointment</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-4">{t("confirmYourAppointment")}</h3>
 
             <div className="space-y-4">
               <div className="bg-muted/50 p-3 sm:p-4 rounded-lg">
-                <h4 className="font-semibold text-foreground mb-3 text-sm sm:text-base">Services</h4>
+                <h4 className="font-semibold text-foreground mb-3 text-sm sm:text-base">{t("servicesSummary")}</h4>
                 <div className="space-y-2">
                   {selectedServices.map((serviceId) => {
                     const service = availableServices.find((s) => s.id === serviceId)
@@ -766,32 +777,32 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                     )
                   })}
                   <div className="flex justify-between font-bold text-base sm:text-lg pt-2 border-t">
-                    <span className="text-foreground">Total</span>
+                    <span className="text-foreground">{t("total")}</span>
                     <span className="text-primary text-xl">${calculateTotal()}</span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-muted/50 p-3 sm:p-4 rounded-lg">
-                <h4 className="font-semibold text-foreground mb-3 text-sm sm:text-base">Date & Time</h4>
+                <h4 className="font-semibold text-foreground mb-3 text-sm sm:text-base">{t("dateTime")}</h4>
                 <div className="space-y-2 text-xs sm:text-sm">
                   <span>
-                    {selectedDate?.toLocaleDateString("en-US", {
+                    {selectedDate?.toLocaleDateString(dateLocale, {
                       weekday: "long",
                       year: "numeric",
                       month: "long",
                       day: "numeric",
                     })}{" "}
-                    at {selectedTime}
+                    {language === "es" ? "a las" : "at"} {selectedTime}
                   </span>
                 </div>
               </div>
 
               <div className="bg-muted/50 p-3 sm:p-4 rounded-lg">
-                <h4 className="font-semibold text-foreground mb-3 text-sm sm:text-base">Contact Information</h4>
+                <h4 className="font-semibold text-foreground mb-3 text-sm sm:text-base">{t("contactInformation")}</h4>
                 <div className="space-y-3 text-xs sm:text-sm">
                   <div className="grid grid-cols-[80px_1fr] items-center">
-                    <span className="font-medium text-muted-foreground">Name:</span>
+                    <span className="font-medium text-muted-foreground">{t("name")}:</span>
                     <span className="text-foreground">{contactInfo.name}</span>
                   </div>
                   <div className="grid grid-cols-[80px_1fr] items-center">
@@ -799,7 +810,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
                     <span className="text-foreground">{contactInfo.email}</span>
                   </div>
                   <div className="grid grid-cols-[80px_1fr] items-center">
-                    <span className="font-medium text-muted-foreground">Phone:</span>
+                    <span className="font-medium text-muted-foreground">{t("phone")}:</span>
                     <span className="text-foreground">{contactInfo.phone}</span>
                   </div>
                 </div>
@@ -807,7 +818,7 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
 
               {requiresVehicleInfo && vehicleInfo && (
                 <div className="bg-muted/50 p-3 sm:p-4 rounded-lg">
-                  <h4 className="font-semibold text-foreground mb-3 text-sm sm:text-base">Vehicle Information</h4>
+                  <h4 className="font-semibold text-foreground mb-3 text-sm sm:text-base">{t("vehicleInfo")}</h4>
                   <div className="space-y-2 text-xs sm:text-sm">
                     <span>
                       {vehicleInfo.year} {vehicleInfo.make} {vehicleInfo.model}
@@ -824,16 +835,16 @@ export function BookingWizard({ preselectedTireId, onClose }: BookingWizardProps
       <CardFooter className="flex flex-col sm:flex-row gap-3 sm:gap-2">
         {steps.findIndex((step) => step.id === currentStep) > 0 && (
           <Button variant="outline" onClick={handleBack} className="w-full sm:w-auto order-2 sm:order-1 bg-transparent">
-            Back
+            {t("back")}
           </Button>
         )}
         {steps.findIndex((step) => step.id === currentStep) < steps.length - 1 ? (
           <Button onClick={handleNext} disabled={!canProceed()} className="w-full sm:flex-1 order-1 sm:order-2">
-            Continue
+            {t("continue")}
           </Button>
         ) : (
           <Button onClick={handleConfirm} disabled={!canProceed()} className="w-full sm:flex-1 order-1 sm:order-2">
-            Confirm Appointment
+            {t("confirmAppointment")}
           </Button>
         )}
       </CardFooter>

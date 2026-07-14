@@ -27,12 +27,13 @@ export default function TrackPage() {
   }, [])
 
   const handleSearch = async (trackingNum?: string) => {
-    const searchNum = trackingNum || trackingNumber
+    const searchNum = (trackingNum || trackingNumber).trim().toUpperCase()
     if (!searchNum.trim()) return
 
+    setTrackingNumber(searchNum)
     setLoading(true)
     try {
-      const found = await getAppointmentByTrackingNumber(searchNum.trim().toUpperCase())
+      const found = await getAppointmentByTrackingNumber(searchNum)
 
       if (found) {
         setSearchedAppointment(found)
@@ -47,15 +48,17 @@ export default function TrackPage() {
   }
 
   const statusConfig = {
-    pending: { label: t("pending"), color: "bg-yellow-500", icon: Clock },
-    confirmed: { label: t("confirmed"), color: "bg-blue-500", icon: CheckCircle2 },
-    "in-progress": { label: t("inProgress"), color: "bg-purple-500", icon: Clock },
-    completed: { label: t("completed"), color: "bg-green-500", icon: CheckCircle2 },
-    cancelled: { label: t("cancelled"), color: "bg-red-500", icon: Clock },
+    pending: { label: t("pending"), color: "bg-yellow-500", icon: Clock, description: t("appointmentReceived"), next: t("pendingNextStep") },
+    confirmed: { label: t("confirmed"), color: "bg-blue-500", icon: CheckCircle2, description: t("appointmentConfirmed"), next: t("confirmedNextStep") },
+    "in-progress": { label: t("inProgress"), color: "bg-purple-500", icon: Clock, description: t("workInProgress"), next: t("inProgressNextStep") },
+    completed: { label: t("completed"), color: "bg-green-500", icon: CheckCircle2, description: t("serviceCompleted"), next: t("completedNextStep") },
+    cancelled: { label: t("cancelled"), color: "bg-red-500", icon: Clock, description: t("appointmentCancelled"), next: t("cancelledNextStep") },
   }
 
+  const currentStatusKey = (searchedAppointment?.status || "pending") as keyof typeof statusConfig
+  const currentStatus = statusConfig[currentStatusKey] || statusConfig.pending
   const StatusIcon = searchedAppointment
-    ? statusConfig[searchedAppointment.status as keyof typeof statusConfig].icon
+    ? currentStatus.icon
     : Clock
 
   return (
@@ -65,7 +68,7 @@ export default function TrackPage() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">{t("trackYourService")}</h1>
-            <p className="text-muted-foreground">{t("enterTrackingNumber")}</p>
+            <p className="text-muted-foreground">{t("trackingIntro")}</p>
           </div>
 
           <Card className="mb-8">
@@ -75,7 +78,7 @@ export default function TrackPage() {
                   placeholder={t("trackingNumberPlaceholder")}
                   value={trackingNumber}
                   onChange={(e) => {
-                    setTrackingNumber(e.target.value)
+                    setTrackingNumber(e.target.value.toUpperCase())
                     setNotFound(false)
                   }}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -91,6 +94,7 @@ export default function TrackPage() {
                   {t("search")}
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-3 text-center sm:text-left">{t("trackingHelp")}</p>
             </CardContent>
           </Card>
 
@@ -110,18 +114,23 @@ export default function TrackPage() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{t("currentStatus")}</CardTitle>
                     <Badge
-                      className={`${statusConfig[searchedAppointment.status as keyof typeof statusConfig].color} text-white`}
+                      className={`${currentStatus.color} text-white`}
                     >
                       <StatusIcon className="h-3 w-3 mr-1" />
-                      {statusConfig[searchedAppointment.status as keyof typeof statusConfig].label}
+                      {currentStatus.label}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">{currentStatus.description}</p>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{t("trackingNumber")}:</span>
                       <span className="font-mono font-semibold">{searchedAppointment.trackingNumber}</span>
+                    </div>
+                    <div className="rounded-lg bg-muted/60 p-3">
+                      <p className="text-xs font-semibold uppercase text-muted-foreground">{t("nextStep")}</p>
+                      <p className="font-medium text-foreground mt-1">{currentStatus.next}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -162,6 +171,9 @@ export default function TrackPage() {
                               }`}
                             >
                               {statusConfig[status as keyof typeof statusConfig].label}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {statusConfig[status as keyof typeof statusConfig].description}
                             </p>
                           </div>
                         </div>
@@ -260,6 +272,18 @@ export default function TrackPage() {
                   </CardContent>
                 </Card>
               )}
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setTrackingNumber("")
+                  setSearchedAppointment(null)
+                  setNotFound(false)
+                }}
+              >
+                {t("trackAnother")}
+              </Button>
             </div>
           )}
         </div>
