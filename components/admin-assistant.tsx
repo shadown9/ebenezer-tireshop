@@ -116,6 +116,22 @@ function getMemoryStorageKey(user: AdminUser | null) {
   return `${MEMORY_STORAGE_KEY}:${id}`
 }
 
+function chooseVoice(voices: SpeechSynthesisVoice[], language: "es" | "en") {
+  const preferredSpanish = ["google español", "google us spanish", "paulina", "monica", "sabina", "luciana", "jorge"]
+  const preferredEnglish = ["google us english", "microsoft aria", "microsoft jenny", "samantha", "alex", "daniel"]
+  const preferred = language === "es" ? preferredSpanish : preferredEnglish
+  const languagePrefix = language === "es" ? "es" : "en"
+
+  return (
+    preferred
+      .map((name) => voices.find((voice) => voice.name.toLowerCase().includes(name)))
+      .find(Boolean) ||
+    voices.find((voice) => voice.lang.toLowerCase().startsWith(languagePrefix) && voice.localService) ||
+    voices.find((voice) => voice.lang.toLowerCase().startsWith(languagePrefix)) ||
+    null
+  )
+}
+
 function toNumber(value: unknown) {
   const number = Number(value)
   return Number.isFinite(number) ? number : 0
@@ -310,6 +326,7 @@ export function AdminAssistant() {
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<AssistantMode>("local")
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [memory, setMemory] = useState<string[]>(() => {
     if (typeof window === "undefined") return []
 
@@ -353,6 +370,21 @@ export function AdminAssistant() {
   useEffect(() => {
     return () => {
       window.speechSynthesis?.cancel()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return
+
+    const loadVoices = () => {
+      setVoices(window.speechSynthesis.getVoices())
+    }
+
+    loadVoices()
+    window.speechSynthesis.onvoiceschanged = loadVoices
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null
     }
   }, [])
 
@@ -475,9 +507,13 @@ export function AdminAssistant() {
 
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(speechText(content))
+    const voice = chooseVoice(voices, assistantLanguage)
+    if (voice) {
+      utterance.voice = voice
+    }
     utterance.lang = assistantLanguage === "es" ? "es-US" : "en-US"
-    utterance.rate = 0.96
-    utterance.pitch = 1
+    utterance.rate = assistantLanguage === "es" ? 0.92 : 0.94
+    utterance.pitch = 1.03
     utterance.onend = () => setSpeakingIndex(null)
     utterance.onerror = () => setSpeakingIndex(null)
     setSpeakingIndex(index)
