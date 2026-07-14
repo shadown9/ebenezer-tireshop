@@ -531,9 +531,13 @@ export function AdminAssistant() {
           token: adminToken,
         }),
       })
-      const data = await response.json()
-      const reply = data.reply || text.error
-      setMode(data.mode === "ai" ? "ai" : "local")
+      const data = await response.json().catch(() => null)
+      const fallbackReply =
+        assistantLanguage === "es"
+          ? "Estoy listo por aqui. Dime si revisamos caja, facturas, inventario, citas, reportes o taxes y lo aterrizamos sin vueltas."
+          : "I am ready here. Tell me if we are checking cash, invoices, inventory, appointments, reports, or taxes and I will keep it practical."
+      const reply = data?.reply || fallbackReply
+      setMode(data?.mode === "ai" ? "ai" : "local")
       setMessages([{ role: "assistant", content: reply }])
     } catch {
       setMode("local")

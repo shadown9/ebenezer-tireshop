@@ -112,10 +112,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const fallback = buildLocalAssistantReply(latestQuestion, summary, language)
+    const openingFallback =
+      language === "es"
+        ? "Estoy listo por aqui. Dime si revisamos caja, facturas, inventario, citas, reportes o taxes y lo aterrizamos sin vueltas."
+        : "I am ready here. Tell me if we are checking cash, invoices, inventory, appointments, reports, or taxes and I will keep it practical."
+    const fallback = isChatOpening ? openingFallback : buildLocalAssistantReply(latestQuestion, summary, language)
+    const nvidiaMessages: AssistantChatMessage[] = isChatOpening
+      ? [{ role: "user", content: latestQuestion }]
+      : messages
 
     try {
-      const aiReply = await askNvidia({ messages, summary, language, memory })
+      const aiReply = await askNvidia({ messages: nvidiaMessages, summary, language, memory })
       if (aiReply) {
         return NextResponse.json({ mode: "ai", reply: aiReply })
       }
