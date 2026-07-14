@@ -36,10 +36,10 @@ export async function logout(token: string): Promise<void> {
   }
 }
 
-export async function getCurrentUser(token: string): Promise<User | null> {
+export async function getCurrentUser(token?: string | null): Promise<User | null> {
   try {
     const response = await fetch("/api/auth/current", {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
 
     if (!response.ok) {

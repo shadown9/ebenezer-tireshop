@@ -16,6 +16,7 @@ interface AssistantRequest {
   summary?: AdminAssistantSummary
   language?: AssistantLanguage
   memory?: string[]
+  token?: string
 }
 
 function safeMessages(messages: AssistantChatMessage[]) {
@@ -71,7 +72,8 @@ async function askNvidia({
 
 export async function POST(req: NextRequest) {
   try {
-    const token = req.headers.get("authorization")?.replace("Bearer ", "")
+    const body = (await req.json()) as AssistantRequest
+    const token = req.headers.get("authorization")?.replace("Bearer ", "") || body.token || req.cookies.get("admin_token")?.value
     if (!token) {
       return NextResponse.json({ error: "Missing token" }, { status: 401 })
     }
@@ -81,7 +83,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 })
     }
 
-    const body = (await req.json()) as AssistantRequest
     const messages = Array.isArray(body.messages) ? body.messages : []
     const memory = Array.isArray(body.memory)
       ? body.memory.map((item) => String(item).slice(0, 500)).slice(-8)

@@ -415,20 +415,29 @@ export function AdminAssistant() {
     setLoading(true)
 
     try {
+      const adminToken = window.localStorage.getItem("admin_token") || ""
       const response = await fetch("/api/admin/assistant", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${window.localStorage.getItem("admin_token") || ""}`,
+          Authorization: `Bearer ${adminToken}`,
         },
         body: JSON.stringify({
           messages: nextMessages,
           summary,
           language: assistantLanguage,
           memory,
+          token: adminToken,
         }),
       })
       const data = await response.json()
+      if (!response.ok) {
+        const authMessage =
+          assistantLanguage === "es"
+            ? "Tu sesion de admin parece vencida. Cierra sesion y vuelve a entrar para que pueda ayudarte con datos reales. Si, la seguridad a veces se pone intensa, pero aqui nos conviene."
+            : "Your admin session looks expired. Log out and log back in so I can help with real data. Security can be dramatic, but this time it is useful."
+        throw new Error(data?.error || authMessage)
+      }
       const reply = data.reply || text.error
       setMode(data.mode === "ai" ? "ai" : "local")
       setMessages((current) => [
@@ -439,9 +448,12 @@ export function AdminAssistant() {
         ...current,
         `Usuario ${currentUser?.name || "admin"} pregunto: ${cleanQuestion}. ${ASSISTANT_NAME} respondio: ${speechText(reply).slice(0, 280)}`,
       ].slice(-8))
-    } catch {
+    } catch (error) {
       setMode("local")
-      setMessages((current) => [...current, { role: "assistant", content: text.error }].slice(-12))
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: error instanceof Error ? error.message : text.error },
+      ].slice(-12))
     } finally {
       setLoading(false)
     }

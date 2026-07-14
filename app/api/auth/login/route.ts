@@ -15,7 +15,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    return NextResponse.json(result)
+    const response = NextResponse.json(result)
+    const hostname = request.nextUrl.hostname
+    response.cookies.set("admin_token", result.token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24,
+      ...(hostname.endsWith("ebenezertireshop.com") ? { domain: ".ebenezertireshop.com" } : {}),
+    })
+
+    return response
   } catch (error) {
     console.error("[v0] Login error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

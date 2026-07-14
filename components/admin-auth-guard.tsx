@@ -13,12 +13,6 @@ export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
     const checkAuth = async () => {
       const token = localStorage.getItem("admin_token")
 
-      if (!token) {
-        router.push("/admin/login")
-        return
-      }
-
-      // Verify token is still valid
       const user = await getCurrentUser(token)
       if (!user) {
         localStorage.removeItem("admin_token")
@@ -27,6 +21,7 @@ export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
         return
       }
 
+      localStorage.setItem("admin_user", JSON.stringify(user))
       setIsChecking(false)
     }
 

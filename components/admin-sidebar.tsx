@@ -28,6 +28,7 @@ import { hasPermission, ROLE_NAMES } from "@/lib/permissions"
 import { useAdminText } from "@/lib/admin-translations"
 import LanguageToggle from "@/components/language-toggle"
 import type { User as AdminUser } from "@/lib/types"
+import { logout as logoutSession } from "@/lib/auth-client"
 
 const getNavItems = (at: ReturnType<typeof useAdminText>["at"]) => [
   {
@@ -119,7 +120,9 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
     return null
   })
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const token = localStorage.getItem("admin_token")
+    await logoutSession(token || "")
     localStorage.removeItem("admin_token")
     localStorage.removeItem("admin_user")
     localStorage.removeItem("ebenezer-admin-assistant-thread")

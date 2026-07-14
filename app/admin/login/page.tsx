@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShieldCheck, Loader2, Eye, EyeOff } from "lucide-react"
-import { login } from "@/lib/auth-client"
+import { getCurrentUser, login } from "@/lib/auth-client"
 import Image from "next/image"
 
 export default function AdminLoginPage() {
@@ -22,10 +22,17 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem("admin_token")
-    if (token) {
-      router.push("/admin")
+    const checkExistingSession = async () => {
+      const token = localStorage.getItem("admin_token")
+      const user = await getCurrentUser(token)
+
+      if (user) {
+        localStorage.setItem("admin_user", JSON.stringify(user))
+        router.push("/admin")
+      }
     }
+
+    void checkExistingSession()
 
     // Initialize default admin via API call instead of direct DB call
     fetch("/api/auth/init").catch(console.error)
