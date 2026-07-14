@@ -3,18 +3,21 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { enUS, es } from "date-fns/locale"
 import { ChevronLeft, Printer, Banknote, CreditCard, Landmark, Settings, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useSales } from "@/lib/firebase-hooks"
+import { useAdminText } from "@/lib/admin-translations"
 
 export default function POSClosePage() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const isPreview = searchParams.get('preview') === 'true'
     const { toast } = useToast()
+    const { at, language } = useAdminText()
+    const dateLocale = language === "es" ? es : enUS
     const { sales: allSales, loading: salesLoading } = useSales()
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({
@@ -159,7 +162,7 @@ export default function POSClosePage() {
 
         } catch (error) {
             console.error("Error fetching stats:", error)
-            toast({ title: "Error", description: "No se pudo generar el reporte", variant: "destructive" })
+            toast({ title: "Error", description: at("reportErrorDescription"), variant: "destructive" })
         } finally {
             setLoading(false)
         }
@@ -167,7 +170,7 @@ export default function POSClosePage() {
 
     const handlePrint = () => window.print()
 
-    if (loading) return <div className="text-center p-10">Generando reporte...</div>
+    if (loading) return <div className="text-center p-10">{at("generatingReport")}</div>
 
     return (
         <div className="min-h-screen bg-slate-50 print:bg-white text-slate-900 pb-20">
@@ -177,32 +180,32 @@ export default function POSClosePage() {
                 <div className="text-center border-b pb-6">
                     {isPreview && (
                         <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg mb-4 font-medium">
-                            👁 VISTA PREVIA - El día aún no está cerrado
+                            👁 {at("previewOpenDay")}
                         </div>
                     )}
                     <h2 className="text-2xl font-bold uppercase tracking-widest">
-                        {isPreview ? 'Resumen del Día' : 'Reporte Diario Z'}
+                        {isPreview ? at("dailySummary") : at("dailyZReport")}
                     </h2>
-                    <p className="text-slate-500 capitalize">{format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })}</p>
-                    {!isPreview && <p className="text-sm text-slate-400">Corte: {format(new Date(), "h:mm a")}</p>}
+                    <p className="text-slate-500 capitalize">{format(new Date(), language === "es" ? "EEEE, d 'de' MMMM yyyy" : "EEEE, MMMM d, yyyy", { locale: dateLocale })}</p>
+                    {!isPreview && <p className="text-sm text-slate-400">{at("cutoff")}: {format(new Date(), "h:mm a")}</p>}
                 </div>
 
                 {/* Financial Summary */}
                 <Card className="border-2 border-slate-900">
                     <CardHeader className="bg-slate-50 pb-2 border-b">
-                        <CardTitle className="text-sm font-bold uppercase text-slate-500">Resumen Financiero</CardTitle>
+                        <CardTitle className="text-sm font-bold uppercase text-slate-500">{at("financialSummary")}</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-4 space-y-4">
                         <div className="flex justify-between items-end">
-                            <span className="font-bold text-slate-700">VENTAS TOTALES (Bruto)</span>
+                            <span className="font-bold text-slate-700">{at("totalSalesGross")}</span>
                             <span className="font-black text-2xl">${stats.totalSales.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-sm text-muted-foreground">
-                            <span>- Costo Estimado (Inventario)</span>
+                            <span>- {at("estimatedInventoryCost")}</span>
                             <span>${stats.totalCost.toFixed(2)}</span>
                         </div>
                         <div className="my-2 border-t pt-2 flex justify-between">
-                            <span className="font-semibold text-green-700">Ganancia Neta</span>
+                            <span className="font-semibold text-green-700">{at("netProfit")}</span>
                             <span className="font-bold text-xl text-green-700">${stats.netProfit.toFixed(2)}</span>
                         </div>
 
@@ -210,19 +213,19 @@ export default function POSClosePage() {
 
                         <div className="space-y-1 pt-2 text-sm">
                             <div className="flex justify-between text-green-700 font-medium">
-                                <span>Efectivo</span>
+                                <span>{at("cash")}</span>
                                 <span>${stats.byMethod.cash.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-blue-700 font-medium">
-                                <span>Tarjeta</span>
+                                <span>{at("card")}</span>
                                 <span>${stats.byMethod.card.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-purple-700 font-medium">
-                                <span>Transferencia</span>
+                                <span>{at("transfer")}</span>
                                 <span>${stats.byMethod.transfer.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-orange-700 font-medium">
-                                <span>Mixto</span>
+                                <span>{at("mixed")}</span>
                                 <span>${stats.byMethod.mixed.toFixed(2)}</span>
                             </div>
                         </div>
@@ -234,15 +237,15 @@ export default function POSClosePage() {
                     <Card className="border-orange-200 bg-orange-50/30">
                         <CardHeader className="pb-2 border-b border-orange-100">
                             <CardTitle className="text-sm font-bold uppercase text-orange-800 flex items-center gap-2">
-                                📊 Desglose Detallado de Productos
+                                📊 {at("detailedProductBreakdown")}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-4 space-y-1">
                             <div className="grid grid-cols-5 gap-2 text-xs font-bold text-slate-600 border-b pb-2 mb-2">
-                                <span className="col-span-2">Producto</span>
-                                <span className="text-right">Costo</span>
-                                <span className="text-right">Vendido</span>
-                                <span className="text-right">Ganancia</span>
+                                <span className="col-span-2">{at("product")}</span>
+                                <span className="text-right">{at("cost")}</span>
+                                <span className="text-right">{at("soldAmount")}</span>
+                                <span className="text-right">{at("profit")}</span>
                             </div>
                             {stats.soldItems.map((item, idx) => (
                                 <div key={idx} className="grid grid-cols-5 gap-2 text-sm py-1 border-b border-dashed border-slate-200 last:border-0">
@@ -258,7 +261,7 @@ export default function POSClosePage() {
                                 </div>
                             ))}
                             <div className="pt-3 mt-2 border-t-2 border-orange-200 grid grid-cols-5 gap-2 text-sm font-bold">
-                                <span className="col-span-2 text-slate-700">TOTALES</span>
+                                <span className="col-span-2 text-slate-700">{at("totals")}</span>
                                 <span className="text-right text-slate-700">${stats.totalCost.toFixed(2)}</span>
                                 <span className="text-right text-blue-700">${stats.totalSales.toFixed(2)}</span>
                                 <span className={`text-right ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -273,34 +276,34 @@ export default function POSClosePage() {
                 <Card className="border-green-200 bg-green-50/30">
                     <CardHeader className="pb-2 border-b border-green-100">
                         <CardTitle className="text-sm font-bold uppercase text-green-800 flex items-center gap-2">
-                            <Banknote className="h-4 w-4" /> Control de Efectivo
+                            <Banknote className="h-4 w-4" /> {at("cashControl")}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-4 space-y-2 text-sm">
                         <div className="flex justify-between">
-                            <span>(+) Ventas Efectivo</span>
+                            <span>(+) {at("cashSales")}</span>
                             <span className="font-mono font-bold">${stats.cashBalance.sales.toFixed(2)}</span>
                         </div>
                         {stats.byMethod.mixed > 0 && (
                             <div className="flex justify-between text-orange-600 italic">
-                                <span>(+) Ventas Mixtas (Verificar)</span>
+                                <span>(+) {at("mixedSalesCheck")}</span>
                                 <span className="font-mono font-bold">${stats.byMethod.mixed.toFixed(2)}</span>
                             </div>
                         )}
                         <div className="flex justify-between text-green-600">
-                            <span>(+) Depósitos/Ingresos</span>
+                            <span>(+) {at("deposits")}</span>
                             <span className="font-mono font-bold">${stats.cashBalance.deposits.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-red-600">
-                            <span>(-) Gastos</span>
+                            <span>(-) {at("expenses")}</span>
                             <span className="font-mono font-bold">-${stats.cashBalance.expenses.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-orange-600">
-                            <span>(-) Retiros</span>
+                            <span>(-) {at("withdrawals")}</span>
                             <span className="font-mono font-bold">-${stats.cashBalance.withdrawals.toFixed(2)}</span>
                         </div>
                         <div className="border-t border-green-200 pt-2 mt-2 flex justify-between text-lg font-black text-green-900">
-                            <span>= EFECTIVO EN CAJA</span>
+                            <span>= {at("cashInRegisterTotal")}</span>
                             <span>${stats.cashBalance.final.toFixed(2)}</span>
                         </div>
                     </CardContent>
@@ -311,7 +314,7 @@ export default function POSClosePage() {
                     {/* Cash Products */}
                     {stats.productsByMethod.cash.length > 0 && (
                         <div>
-                            <h3 className="text-xs font-bold uppercase text-green-700 mb-2 border-b border-green-200 pb-1">Vendidos en Efectivo ({stats.productsByMethod.cash.length})</h3>
+                            <h3 className="text-xs font-bold uppercase text-green-700 mb-2 border-b border-green-200 pb-1">{at("soldInCash")} ({stats.productsByMethod.cash.length})</h3>
                             {stats.productsByMethod.cash.map((p: any, i) => (
                                 <div key={i} className="flex justify-between text-sm py-1 border-b last:border-0 border-slate-100">
                                     <span>{p.quantity}x {p.name}</span>
@@ -324,7 +327,7 @@ export default function POSClosePage() {
                     {/* Card Products */}
                     {stats.productsByMethod.card.length > 0 && (
                         <div>
-                            <h3 className="text-xs font-bold uppercase text-blue-700 mb-2 border-b border-blue-200 pb-1">Vendidos con Tarjeta ({stats.productsByMethod.card.length})</h3>
+                            <h3 className="text-xs font-bold uppercase text-blue-700 mb-2 border-b border-blue-200 pb-1">{at("soldByCard")} ({stats.productsByMethod.card.length})</h3>
                             {stats.productsByMethod.card.map((p: any, i) => (
                                 <div key={i} className="flex justify-between text-sm py-1 border-b last:border-0 border-slate-100">
                                     <span>{p.quantity}x {p.name}</span>
@@ -337,7 +340,7 @@ export default function POSClosePage() {
                     {/* Transfer Products */}
                     {stats.productsByMethod.transfer.length > 0 && (
                         <div>
-                            <h3 className="text-xs font-bold uppercase text-purple-700 mb-2 border-b border-purple-200 pb-1">Vendidos con Transferencia ({stats.productsByMethod.transfer.length})</h3>
+                            <h3 className="text-xs font-bold uppercase text-purple-700 mb-2 border-b border-purple-200 pb-1">{at("soldByTransfer")} ({stats.productsByMethod.transfer.length})</h3>
                             {stats.productsByMethod.transfer.map((p: any, i) => (
                                 <div key={i} className="flex justify-between text-sm py-1 border-b last:border-0 border-slate-100">
                                     <span>{p.quantity}x {p.name}</span>
@@ -350,7 +353,7 @@ export default function POSClosePage() {
                     {/* Mixed Products */}
                     {stats.productsByMethod.mixed.length > 0 && (
                         <div>
-                            <h3 className="text-xs font-bold uppercase text-orange-700 mb-2 border-b border-orange-200 pb-1">Vendidos con Pago Mixto ({stats.productsByMethod.mixed.length})</h3>
+                            <h3 className="text-xs font-bold uppercase text-orange-700 mb-2 border-b border-orange-200 pb-1">{at("soldByMixed")} ({stats.productsByMethod.mixed.length})</h3>
                             {stats.productsByMethod.mixed.map((p: any, i) => (
                                 <div key={i} className="flex justify-between text-sm py-1 border-b last:border-0 border-slate-100">
                                     <span>{p.quantity}x {p.name}</span>
@@ -364,8 +367,8 @@ export default function POSClosePage() {
                 {/* Signature */}
                 <div className="hidden print:block mt-16 pt-8 border-t border-slate-400">
                     <div className="flex justify-between text-xs font-bold uppercase">
-                        <span className="border-t border-black w-32 pt-2 text-center">Firma Cajero</span>
-                        <span className="border-t border-black w-32 pt-2 text-center">Firma Supervisor</span>
+                        <span className="border-t border-black w-32 pt-2 text-center">{at("cashierSignature")}</span>
+                        <span className="border-t border-black w-32 pt-2 text-center">{at("supervisorSignature")}</span>
                     </div>
                 </div>
             </div>

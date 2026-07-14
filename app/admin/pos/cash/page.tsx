@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { useAdminText } from "@/lib/admin-translations"
 
 interface CashMovement {
     id: number
@@ -30,6 +31,7 @@ interface CashMovement {
 export default function CashControlPage() {
     const router = useRouter()
     const { toast } = useToast()
+    const { at } = useAdminText()
     const [balance, setBalance] = useState({ total: 0, sales: 0, expenses: 0, withdrawals: 0, deposits: 0 })
     const [movements, setMovements] = useState<CashMovement[]>([])
     const [loading, setLoading] = useState(true)
@@ -102,7 +104,7 @@ export default function CashControlPage() {
 
     const handleSubmit = async () => {
         if (!formData.amount || Number(formData.amount) <= 0) {
-            toast({ title: "Monto inválido", variant: "destructive" })
+            toast({ title: at("invalidAmount"), variant: "destructive" })
             return
         }
 
@@ -113,15 +115,15 @@ export default function CashControlPage() {
                 body: JSON.stringify({
                     type: actionType,
                     amount: parseFloat(formData.amount),
-                    description: formData.description || (actionType === 'expense' ? 'Gasto Vario' : 'Movimiento Manual')
+                    description: formData.description || (actionType === 'expense' ? at("defaultExpense") : at("defaultMovement"))
                 })
             })
 
-            toast({ title: "Movimiento Registrado" })
+            toast({ title: at("movementSaved") })
             setDialogOpen(false)
             fetchData() // Refresh
         } catch (error) {
-            toast({ title: "Error al registrar", variant: "destructive" })
+            toast({ title: at("movementError"), variant: "destructive" })
         }
     }
 
@@ -132,20 +134,20 @@ export default function CashControlPage() {
                 {/* Main Balance Card */}
                 <Card className="bg-slate-900 text-white border-none shadow-lg">
                     <CardContent className="p-6 text-center">
-                        <p className="text-slate-400 text-sm uppercase tracking-wider mb-2">Efectivo en Caja (Estimado)</p>
+                        <p className="text-slate-400 text-sm uppercase tracking-wider mb-2">{at("cashInRegister")} ({at("estimated")})</p>
                         <h2 className="text-5xl font-black mb-4">${balance.total.toFixed(2)}</h2>
 
                         <div className="grid grid-cols-3 gap-2 text-xs border-t border-slate-700 pt-4">
                             <div>
-                                <p className="text-slate-400">Ventas (Cash)</p>
+                                <p className="text-slate-400">{at("cashSales")}</p>
                                 <p className="font-bold text-green-400">+${balance.sales.toFixed(2)}</p>
                             </div>
                             <div>
-                                <p className="text-slate-400">Gastos</p>
+                                <p className="text-slate-400">{at("expenses")}</p>
                                 <p className="font-bold text-red-400">-${balance.expenses.toFixed(2)}</p>
                             </div>
                             <div>
-                                <p className="text-slate-400">Retiros</p>
+                                <p className="text-slate-400">{at("withdrawals")}</p>
                                 <p className="font-bold text-orange-400">-${balance.withdrawals.toFixed(2)}</p>
                             </div>
                         </div>
@@ -160,7 +162,7 @@ export default function CashControlPage() {
                     >
                         <div className="flex flex-col items-center">
                             <TrendingDown className="h-5 w-5 mb-1" />
-                            <span className="font-bold">Registrar Gasto</span>
+                            <span className="font-bold">{at("registerExpense")}</span>
                         </div>
                     </Button>
                     <Button
@@ -169,17 +171,17 @@ export default function CashControlPage() {
                     >
                         <div className="flex flex-col items-center">
                             <ArrowUpRight className="h-5 w-5 mb-1" />
-                            <span className="font-bold">Retiro / Depósito</span>
+                            <span className="font-bold">{at("withdrawalDeposit")}</span>
                         </div>
                     </Button>
                 </div>
 
                 {/* Recent Movements List */}
                 <div>
-                    <h3 className="font-bold text-slate-700 mb-3 px-1">Movimientos Recientes</h3>
+                    <h3 className="font-bold text-slate-700 mb-3 px-1">{at("recentMovements")}</h3>
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                         {movements.length === 0 ? (
-                            <div className="p-8 text-center text-slate-400">No hay movimientos registrados</div>
+                            <div className="p-8 text-center text-slate-400">{at("noMovements")}</div>
                         ) : (
                             movements.map((move, i) => (
                                 <div key={i} className="flex justify-between items-center p-4 border-b last:border-0 hover:bg-slate-50">
@@ -188,8 +190,8 @@ export default function CashControlPage() {
                                             {move.type === 'expense' ? <TrendingDown className="h-4 w-4" /> : move.type === 'withdrawal' ? <ArrowUpRight className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-slate-900 capitalize">{move.type === 'expense' ? 'Gasto' : move.type}</p>
-                                            <p className="text-xs text-slate-500">{move.description || "Sin descripción"}</p>
+                                            <p className="font-bold text-slate-900 capitalize">{move.type === 'expense' ? at("expense") : move.type === "deposit" ? at("deposit") : at("withdrawal")}</p>
+                                            <p className="text-xs text-slate-500">{move.description || at("noDescription")}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -210,15 +212,15 @@ export default function CashControlPage() {
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="capitalize">
-                            {actionType === 'expense' ? 'Registrar Gasto' : 'Registrar Retiro'}
+                            {actionType === 'expense' ? at("registerExpense") : at("registerWithdrawal")}
                         </DialogTitle>
                         <DialogDescription>
-                            {actionType === 'expense' ? 'Salida de dinero para compras o pagos.' : 'Retiro de efectivo para banco o caja fuerte.'}
+                            {actionType === 'expense' ? at("expenseDescription") : at("withdrawalDescription")}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>Monto</Label>
+                            <Label>{at("amount")}</Label>
                             <div className="relative">
                                 <DollarSign className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
                                 <Input
@@ -231,17 +233,17 @@ export default function CashControlPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label>Descripción / Motivo</Label>
+                            <Label>{at("descriptionReason")}</Label>
                             <Input
-                                placeholder={actionType === 'expense' ? "Ej: Compra de almuerzo" : "Ej: Depósito bancario"}
+                                placeholder={actionType === 'expense' ? at("lunchExample") : at("bankDepositExample")}
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                             />
                         </div>
                     </div>
                     <DialogFooter className="flex gap-2">
-                        <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1">Cancelar</Button>
-                        <Button onClick={handleSubmit} className="flex-1 capitalize">Confirmar {actionType}</Button>
+                        <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1">{at("cancel")}</Button>
+                        <Button onClick={handleSubmit} className="flex-1">{at("confirmAction")}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -26,82 +26,85 @@ import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import Image from "next/image"
 import { hasPermission, ROLE_NAMES } from "@/lib/permissions"
+import { useAdminText } from "@/lib/admin-translations"
+import LanguageToggle from "@/components/language-toggle"
 
-const navItems = [
+const getNavItems = (at: ReturnType<typeof useAdminText>["at"]) => [
   {
-    title: "Punto de Venta (POS)",
+    title: at("pos"),
     href: "/admin/pos",
     icon: Monitor,
-    description: "Launch POS System",
+    description: at("launchPos"),
     permission: "viewInventory" as const, // Using inventory permission as a proxy for POS access for now
   },
   {
-    title: "Reportes",
+    title: at("reports"),
     href: "/admin/pos/reports",
     icon: BarChart3,
-    description: "Sales, accounting, and tax reports",
+    description: at("reportsDescription"),
     permission: "viewInventory" as const,
   },
   {
-    title: "Agenda",
+    title: at("agenda"),
     href: "/admin/agenda",
     icon: Calendar,
-    description: "Appointments & Schedule",
+    description: at("appointmentsSchedule"),
     permission: "viewAppointments" as const,
   },
   {
-    title: "Inventario",
+    title: at("inventory"),
     href: "/admin/inventory",
     icon: Package,
-    description: "Tire Inventory Management",
+    description: at("inventoryDescription"),
     permission: "viewInventory" as const,
   },
   {
-    title: "Servicios",
+    title: at("services"),
     href: "/admin/services",
     icon: Wrench,
-    description: "Service Management",
+    description: at("serviceDescription"),
     permission: "viewServices" as const,
   },
   {
-    title: "CMS",
+    title: at("cms"),
     href: "/admin/cms",
     icon: ImageIcon,
-    description: "Content Management",
+    description: at("cmsDescription"),
     permission: "viewCMS" as const,
   },
   {
-    title: "Settings",
+    title: at("settings"),
     href: "/admin/settings",
     icon: Settings,
-    description: "Business Information",
+    description: at("settingsDescription"),
     permission: "viewSettings" as const,
   },
   {
-    title: "Usuarios",
+    title: at("users"),
     href: "/admin/users",
     icon: Shield,
-    description: "User Management",
+    description: at("usersDescription"),
     permission: "viewUsers" as const,
   },
   {
-    title: "Auditoría",
+    title: at("audit"),
     href: "/admin/audit",
     icon: FileText,
-    description: "Activity Logs",
+    description: at("auditDescription"),
     permission: "viewAudit" as const,
   },
   {
-    title: "Mi Perfil",
+    title: at("profile"),
     href: "/admin/profile",
     icon: User,
-    description: "Account Settings",
+    description: at("profileDescription"),
     permission: "viewProfile" as const,
   },
 ]
 
 function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   const router = useRouter()
+  const { at } = useAdminText()
   const [currentUser, setCurrentUser] = useState<any | null>(null)
 
   useEffect(() => {
@@ -122,7 +125,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
     router.push("/admin/login")
   }
 
-  const visibleNavItems = navItems.filter((item) => {
+  const visibleNavItems = getNavItems(at).filter((item) => {
     if (!currentUser) return false
     return hasPermission(currentUser.role, item.permission)
   })
@@ -136,7 +139,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
           </div>
           <div>
             <h1 className="text-lg font-bold text-white">Ebenezer Tireshop</h1>
-            <p className="text-xs text-white/90">Admin Dashboard</p>
+            <p className="text-xs text-white/90">{at("adminDashboard")}</p>
           </div>
         </Link>
         {currentUser && (
@@ -162,7 +165,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
         >
           <Link href="/admin" onClick={onNavigate}>
             <Home className="mr-3 h-5 w-5 flex-shrink-0" />
-            <span className="font-medium">Dashboard</span>
+            <span className="font-medium">{at("dashboard")}</span>
           </Link>
         </Button>
 
@@ -195,13 +198,17 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
       </nav>
 
       <div className="mt-auto p-4 border-t border-gray-200 space-y-2">
+        <div className="flex justify-center pb-2">
+          <LanguageToggle />
+        </div>
+
         <Button
           variant="outline"
           onClick={handleLogout}
           className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 h-auto py-3 bg-transparent"
         >
           <LogOut className="mr-2 h-4 w-4" />
-          Cerrar Sesión
+          {at("logout")}
         </Button>
 
         <Button
@@ -211,7 +218,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
         >
           <Link href="/" onClick={onNavigate}>
             <Home className="mr-2 h-4 w-4" />
-            Back to Website
+            {at("backToWebsite")}
           </Link>
         </Button>
       </div>
@@ -222,6 +229,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
 export function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { at } = useAdminText()
   const [isOpen, setIsOpen] = useState(false)
 
   const getBackTarget = () => {
@@ -260,8 +268,8 @@ export function AdminSidebar() {
                 size="icon"
                 onClick={handleMobileBack}
                 className="border-gray-300"
-                aria-label="Volver"
-                title="Volver"
+                aria-label={at("back")}
+                title={at("back")}
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
@@ -272,18 +280,21 @@ export function AdminSidebar() {
             <span className="font-bold text-gray-900">Ebenezer Tireshop</span>
           </div>
 
-          {/* Right side: Menu */}
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button size="icon" variant="outline" className="border-gray-300 bg-transparent">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0 bg-white">
-              <SheetTitle className="sr-only">Menu de Navegación</SheetTitle>
-              <SidebarContent pathname={pathname} onNavigate={() => setIsOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          {/* Right side: Language + Menu */}
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button size="icon" variant="outline" className="border-gray-300 bg-transparent">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0 bg-white">
+                <SheetTitle className="sr-only">{at("navigationMenu")}</SheetTitle>
+                <SidebarContent pathname={pathname} onNavigate={() => setIsOpen(false)} />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
 

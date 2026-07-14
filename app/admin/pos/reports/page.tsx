@@ -1,15 +1,17 @@
 "use client"
 
 import type React from "react"
+import type { Locale } from "date-fns"
 import { useEffect, useMemo, useState } from "react"
 import { format, startOfDay, startOfMonth, startOfWeek, startOfYear, endOfDay, endOfMonth, endOfWeek, endOfYear } from "date-fns"
-import { es } from "date-fns/locale"
+import { enUS, es } from "date-fns/locale"
 import { BarChart3, CalendarDays, Download, FileText, Printer, ReceiptText, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useSales } from "@/lib/firebase-hooks"
+import { useAdminText } from "@/lib/admin-translations"
 
 type PeriodMode = "day" | "week" | "month" | "year" | "custom"
 type TaxMode = "exclusive" | "inclusive" | "none"
@@ -44,7 +46,7 @@ function toDate(value?: string) {
     return new Date(value.includes("T") ? value : `${value}T00:00:00`)
 }
 
-function clampPeriod(mode: PeriodMode, anchor: Date, customStart: string, customEnd: string) {
+function clampPeriod(mode: PeriodMode, anchor: Date, customStart: string, customEnd: string, locale: Locale) {
     if (mode === "custom") {
         return {
             start: startOfDay(toDate(customStart)),
@@ -64,7 +66,7 @@ function clampPeriod(mode: PeriodMode, anchor: Date, customStart: string, custom
     return {
         start,
         end,
-        label: `${format(start, "dd MMM yyyy", { locale: es })} - ${format(end, "dd MMM yyyy", { locale: es })}`,
+        label: `${format(start, "dd MMM yyyy", { locale })} - ${format(end, "dd MMM yyyy", { locale })}`,
     }
 }
 
@@ -88,6 +90,8 @@ function downloadText(filename: string, content: string, type = "text/csv;charse
 
 export default function POSReportsPage() {
     const { sales, loading } = useSales()
+    const { at, language } = useAdminText()
+    const dateLocale = language === "es" ? es : enUS
     const [cashMovements, setCashMovements] = useState<CashMovement[]>([])
     const [periodMode, setPeriodMode] = useState<PeriodMode>("month")
     const [anchorDate, setAnchorDate] = useState(format(new Date(), "yyyy-MM-dd"))
@@ -104,8 +108,8 @@ export default function POSReportsPage() {
     }, [])
 
     const period = useMemo(
-        () => clampPeriod(periodMode, toDate(anchorDate), customStart, customEnd),
-        [periodMode, anchorDate, customStart, customEnd],
+        () => clampPeriod(periodMode, toDate(anchorDate), customStart, customEnd, dateLocale),
+        [periodMode, anchorDate, customStart, customEnd, dateLocale],
     )
 
     const report = useMemo(() => {
@@ -139,7 +143,7 @@ export default function POSReportsPage() {
                 const type = item.type || "part"
                 const source = item.source || (item.inventory_item_id ? "inventory" : "manual")
                 const target = type === "service" ? serviceMap : itemMap
-                const key = item.product_name || "Producto sin nombre"
+                const key = item.product_name || at("noNameProduct")
                 const current = target.get(key) || {
                     key,
                     quantity: 0,
@@ -205,7 +209,7 @@ export default function POSReportsPage() {
             topServices,
             averageTicket: periodSales.length > 0 ? grossSales / periodSales.length : 0,
         }
-    }, [sales, cashMovements, period, taxMode, taxRate])
+    }, [sales, cashMovements, period, taxMode, taxRate, at])
 
     const exportCsv = () => {
         const rows = [
@@ -234,7 +238,7 @@ export default function POSReportsPage() {
     }
 
     if (loading) {
-        return <div className="p-10 text-center text-slate-500">Preparando reportes...</div>
+        return <div className="p-10 text-center text-slate-500">{at("preparingReports")}</div>
     }
 
     return (
@@ -242,9 +246,9 @@ export default function POSReportsPage() {
             <div className="p-4 lg:p-6 space-y-5 print:p-8">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between print:block">
                     <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Contabilidad</p>
-                        <h1 className="text-2xl sm:text-3xl font-black">Reportes y Taxes</h1>
-                        <p className="text-sm text-slate-500 mt-1">Periodo: {period.label}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{at("accounting")}</p>
+                        <h1 className="text-2xl sm:text-3xl font-black">{at("reportsAndTaxes")}</h1>
+                        <p className="text-sm text-slate-500 mt-1">{at("period")}: {period.label}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 print:hidden">
                         <Button variant="outline" onClick={exportCsv}>
@@ -253,7 +257,7 @@ export default function POSReportsPage() {
                         </Button>
                         <Button onClick={() => window.print()}>
                             <Printer className="h-4 w-4 mr-2" />
-                            Imprimir
+                            {at("print")}
                         </Button>
                     </div>
                 </div>
@@ -262,11 +266,11 @@ export default function POSReportsPage() {
                     <CardContent className="p-4 space-y-4">
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                             {[
-                                ["day", "Día"],
-                                ["week", "Semana"],
-                                ["month", "Mes"],
-                                ["year", "Año"],
-                                ["custom", "Manual"],
+                                ["day", at("day")],
+                                ["week", at("week")],
+                                ["month", at("month")],
+                                ["year", at("year")],
+                                ["custom", at("manual")],
                             ].map(([value, label]) => (
                                 <Button
                                     key={value}
@@ -280,15 +284,15 @@ export default function POSReportsPage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                             <label className="space-y-1">
-                                <span className="text-xs font-bold text-slate-500">Fecha base</span>
+                                <span className="text-xs font-bold text-slate-500">{at("baseDate")}</span>
                                 <Input type="date" value={anchorDate} onChange={(event) => setAnchorDate(event.target.value)} />
                             </label>
                             <label className="space-y-1">
-                                <span className="text-xs font-bold text-slate-500">Desde</span>
+                                <span className="text-xs font-bold text-slate-500">{at("from")}</span>
                                 <Input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} />
                             </label>
                             <label className="space-y-1">
-                                <span className="text-xs font-bold text-slate-500">Hasta</span>
+                                <span className="text-xs font-bold text-slate-500">{at("to")}</span>
                                 <Input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} />
                             </label>
                             <label className="space-y-1">
@@ -299,9 +303,9 @@ export default function POSReportsPage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             {[
-                                ["exclusive", "Tax encima del precio"],
-                                ["inclusive", "Precio incluye tax"],
-                                ["none", "No calcular tax"],
+                                ["exclusive", at("taxExclusive")],
+                                ["inclusive", at("taxInclusive")],
+                                ["none", at("noTax")],
                             ].map(([value, label]) => (
                                 <Button
                                     key={value}
@@ -316,75 +320,75 @@ export default function POSReportsPage() {
                 </Card>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <MetricCard title="Ventas brutas" value={money.format(report.grossSales)} icon={<TrendingUp className="h-5 w-5" />} />
-                    <MetricCard title="Facturas" value={report.periodSales.length.toString()} icon={<ReceiptText className="h-5 w-5" />} />
-                    <MetricCard title="Ticket promedio" value={money.format(report.averageTicket)} icon={<BarChart3 className="h-5 w-5" />} />
-                    <MetricCard title="Ganancia bruta" value={money.format(report.grossProfit)} icon={<FileText className="h-5 w-5" />} />
+                    <MetricCard title={at("grossSales")} value={money.format(report.grossSales)} icon={<TrendingUp className="h-5 w-5" />} />
+                    <MetricCard title={at("invoices")} value={report.periodSales.length.toString()} icon={<ReceiptText className="h-5 w-5" />} />
+                    <MetricCard title={at("averageTicket")} value={money.format(report.averageTicket)} icon={<BarChart3 className="h-5 w-5" />} />
+                    <MetricCard title={at("grossProfit")} value={money.format(report.grossProfit)} icon={<FileText className="h-5 w-5" />} />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base">Resumen contable</CardTitle>
+                            <CardTitle className="text-base">{at("accountingSummary")}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 text-sm">
-                            <MoneyLine label="Ventas brutas" value={report.grossSales} strong />
-                            <MoneyLine label="Costo de productos vendidos" value={-report.totalCost} />
-                            <MoneyLine label="Gastos registrados en caja" value={-report.expenses} />
-                            <MoneyLine label="Ganancia después de costos/gastos" value={report.netAfterExpenses} strong />
+                            <MoneyLine label={at("grossSales")} value={report.grossSales} strong />
+                            <MoneyLine label={at("productCost")} value={-report.totalCost} />
+                            <MoneyLine label={at("cashExpenses")} value={-report.expenses} />
+                            <MoneyLine label={at("profitAfterCosts")} value={report.netAfterExpenses} strong />
                             <div className="border-t pt-2 mt-2" />
-                            <MoneyLine label="Efectivo" value={report.byMethod.cash} />
-                            <MoneyLine label="Tarjeta" value={report.byMethod.card} />
-                            <MoneyLine label="Transferencia" value={report.byMethod.transfer} />
-                            <MoneyLine label="Mixto" value={report.byMethod.mixed} />
+                            <MoneyLine label={at("cash")} value={report.byMethod.cash} />
+                            <MoneyLine label={at("card")} value={report.byMethod.card} />
+                            <MoneyLine label={at("transfer")} value={report.byMethod.transfer} />
+                            <MoneyLine label={at("mixed")} value={report.byMethod.mixed} />
                             <div className="border-t pt-2 mt-2" />
-                            <MoneyLine label="Depósitos/ingresos manuales" value={report.deposits} />
-                            <MoneyLine label="Retiros" value={-report.withdrawals} />
+                            <MoneyLine label={at("deposits")} value={report.deposits} />
+                            <MoneyLine label={at("withdrawals")} value={-report.withdrawals} />
                         </CardContent>
                     </Card>
 
                     <Card className="border-blue-200">
                         <CardHeader>
-                            <CardTitle className="text-base">Preparación para taxes NJ</CardTitle>
+                            <CardTitle className="text-base">{at("njTaxPrep")}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 text-sm">
-                            <MoneyLine label="Ventas para revisar" value={report.grossSales} strong />
-                            <MoneyLine label="Ventas antes de tax estimadas" value={report.taxableSales} />
-                            <MoneyLine label={`Sales Tax estimado (${taxRate || "0"}%)`} value={report.estimatedSalesTax} strong />
+                            <MoneyLine label={at("salesToReview")} value={report.grossSales} strong />
+                            <MoneyLine label={at("estimatedPretaxSales")} value={report.taxableSales} />
+                            <MoneyLine label={`${at("estimatedSalesTax")} (${taxRate || "0"}%)`} value={report.estimatedSalesTax} strong />
                             <p className="text-xs text-slate-500 pt-2">
-                                NJ publica una tasa general de Sales Tax de 6.625% para la mayoría de propiedad tangible y ciertos servicios, salvo exenciones. Verifica con tu preparador si algún servicio/producto debe tratarse distinto.
+                                {at("njTaxNote")}
                             </p>
                         </CardContent>
                     </Card>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <RankedTable title="Productos más vendidos" rows={report.topProducts} empty="No hay productos vendidos en este periodo." />
-                    <RankedTable title="Servicios más solicitados" rows={report.topServices} empty="No hay servicios vendidos en este periodo." />
+                    <RankedTable title={at("topProducts")} rows={report.topProducts} empty={at("noProducts")} soldLabel={at("sold")} profitLabel={at("profit")} manualLabel={at("manual")} />
+                    <RankedTable title={at("topServices")} rows={report.topServices} empty={at("noServices")} soldLabel={at("sold")} profitLabel={at("profit")} manualLabel={at("manual")} />
                 </div>
 
                 <Card className="print:border-black">
                     <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                             <CalendarDays className="h-5 w-5" />
-                            Paquete para el preparador de taxes
+                            {at("taxPreparerPackage")}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <SummaryPill label="Periodo" value={period.label} />
-                            <SummaryPill label="Generado" value={format(new Date(), "dd/MM/yyyy h:mm a")} />
-                            <SummaryPill label="Facturas incluidas" value={report.periodSales.length.toString()} />
-                            <SummaryPill label="Movimientos de caja" value={report.periodCash.length.toString()} />
+                            <SummaryPill label={at("period")} value={period.label} />
+                            <SummaryPill label={at("generated")} value={format(new Date(), "dd/MM/yyyy h:mm a")} />
+                            <SummaryPill label={at("includedInvoices")} value={report.periodSales.length.toString()} />
+                            <SummaryPill label={at("cashMovements")} value={report.periodCash.length.toString()} />
                         </div>
                         <div className="rounded-lg border p-3 bg-white">
-                            <p className="font-bold mb-2">Checklist de documentos</p>
+                            <p className="font-bold mb-2">{at("documentChecklist")}</p>
                             <ul className="list-disc pl-5 space-y-1 text-slate-600">
-                                <li>CSV de ventas exportado desde esta pantalla.</li>
-                                <li>Reporte impreso de este periodo.</li>
-                                <li>Recibos de gastos y compras de inventario.</li>
-                                <li>Estados de banco, tarjeta y procesador de pagos.</li>
-                                <li>Reporte de nómina, renta, utilidades, seguros y permisos si aplican.</li>
+                                <li>{at("checklistCsv")}</li>
+                                <li>{at("checklistPrinted")}</li>
+                                <li>{at("checklistReceipts")}</li>
+                                <li>{at("checklistStatements")}</li>
+                                <li>{at("checklistPayroll")}</li>
                             </ul>
                         </div>
                     </CardContent>
@@ -419,7 +423,21 @@ function MoneyLine({ label, value, strong = false }: { label: string; value: num
     )
 }
 
-function RankedTable({ title, rows, empty }: { title: string; rows: SummaryRow[]; empty: string }) {
+function RankedTable({
+    title,
+    rows,
+    empty,
+    soldLabel,
+    profitLabel,
+    manualLabel,
+}: {
+    title: string
+    rows: SummaryRow[]
+    empty: string
+    soldLabel: string
+    profitLabel: string
+    manualLabel: string
+}) {
     return (
         <Card>
             <CardHeader>
@@ -435,8 +453,8 @@ function RankedTable({ title, rows, empty }: { title: string; rows: SummaryRow[]
                             <div className="min-w-0">
                                 <p className="font-semibold truncate">{row.key}</p>
                                 <p className="text-xs text-slate-500">
-                                    {row.quantity} vendido(s) · ganancia {money.format(row.profit)}
-                                    {row.manual > 0 && <Badge variant="outline" className="ml-2 text-[10px]">Manual {row.manual}</Badge>}
+                                    {row.quantity} {soldLabel} · {profitLabel} {money.format(row.profit)}
+                                    {row.manual > 0 && <Badge variant="outline" className="ml-2 text-[10px]">{manualLabel} {row.manual}</Badge>}
                                 </p>
                             </div>
                             <span className="font-mono font-bold">{money.format(row.revenue)}</span>
