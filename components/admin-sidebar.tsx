@@ -221,7 +221,32 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
 
 export function AdminSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
+
+  const getBackTarget = () => {
+    if (pathname.startsWith("/admin/pos") && pathname !== "/admin/pos") {
+      return "/admin/pos"
+    }
+
+    return "/admin"
+  }
+
+  const handleMobileBack = () => {
+    try {
+      const referrer = document.referrer ? new URL(document.referrer) : null
+      const hasSafeHistory = referrer?.origin === window.location.origin && window.history.length > 1
+
+      if (hasSafeHistory) {
+        router.back()
+        return
+      }
+    } catch {
+      // Fall through to the safe route below.
+    }
+
+    router.push(getBackTarget())
+  }
 
   return (
     <>
@@ -233,8 +258,10 @@ export function AdminSidebar() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => window.history.back()}
+                onClick={handleMobileBack}
                 className="border-gray-300"
+                aria-label="Volver"
+                title="Volver"
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
