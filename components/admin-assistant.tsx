@@ -67,6 +67,7 @@ declare global {
 const STORAGE_KEY = "ebenezer-admin-assistant-thread"
 const MEMORY_STORAGE_KEY = "ebenezer-admin-assistant-memory"
 const LANGUAGE_STORAGE_KEY = "ebenezer-admin-assistant-language"
+const MODE_STORAGE_KEY = "ebenezer-admin-assistant-mode"
 const ASSISTANT_NAME = "Ebenezer Assistant"
 
 const copy = {
@@ -164,6 +165,12 @@ function getVisibleChatStorageKey() {
   if (typeof window === "undefined") return STORAGE_KEY
   const token = window.localStorage.getItem("admin_token") || "no-session"
   return `${STORAGE_KEY}:${token.slice(0, 12)}`
+}
+
+function getModeStorageKey() {
+  if (typeof window === "undefined") return MODE_STORAGE_KEY
+  const token = window.localStorage.getItem("admin_token") || "no-session"
+  return `${MODE_STORAGE_KEY}:${token.slice(0, 12)}`
 }
 
 function chooseVoice(voices: SpeechSynthesisVoice[], language: "es" | "en") {
@@ -374,7 +381,10 @@ export function AdminAssistant() {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<AssistantMode>("local")
+  const [mode, setMode] = useState<AssistantMode>(() => {
+    if (typeof window === "undefined") return "local"
+    return window.localStorage.getItem(getModeStorageKey()) === "ai" ? "ai" : "local"
+  })
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
@@ -395,7 +405,9 @@ export function AdminAssistant() {
     try {
       const saved = window.localStorage.getItem(getVisibleChatStorageKey())
       const parsed = saved ? (JSON.parse(saved) as AssistantChatMessage[]) : []
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed.slice(-12) : []
+      if (!Array.isArray(parsed) || parsed.length === 0) return []
+      const recent = parsed.slice(-12)
+      return recent.some((message) => message.role === "user") ? recent : []
     } catch {
       return []
     }
@@ -412,6 +424,10 @@ export function AdminAssistant() {
   useEffect(() => {
     window.localStorage.setItem(getVisibleChatStorageKey(), JSON.stringify(messages.slice(-12)))
   }, [messages])
+
+  useEffect(() => {
+    window.localStorage.setItem(getModeStorageKey(), mode)
+  }, [mode])
 
   useEffect(() => {
     window.localStorage.setItem(getMemoryStorageKey(currentUser), JSON.stringify(memory.slice(-8)))

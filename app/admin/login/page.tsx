@@ -20,6 +20,7 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isCheckingSession, setIsCheckingSession] = useState(true)
 
   useEffect(() => {
     const checkExistingSession = async () => {
@@ -29,7 +30,10 @@ export default function AdminLoginPage() {
       if (user) {
         localStorage.setItem("admin_user", JSON.stringify(user))
         router.push("/admin")
+        return
       }
+
+      setIsCheckingSession(false)
     }
 
     void checkExistingSession()
@@ -67,6 +71,17 @@ export default function AdminLoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isCheckingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A]">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-600 border-r-transparent" />
+          <p className="mt-3 text-sm text-gray-400">Verificando acceso...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
