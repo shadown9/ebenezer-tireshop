@@ -43,8 +43,8 @@ export default function TicketPage() {
                 <div className="invoice-print-content text-slate-950">
                     <div className="flex items-start justify-between gap-8 border-b-2 border-slate-900 pb-5">
                         <div className="flex items-start gap-4">
-                            <div className="invoice-logo-wrap flex h-24 w-36 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white p-1">
-                                <img src="/brand-logo-20260801.png" alt="Ebenezer Tire Shop" className="h-full w-full object-contain" />
+                            <div className="invoice-logo-wrap flex h-24 w-36 shrink-0 items-center justify-center overflow-hidden">
+                                <img src="/brand-logo-transparent-20260801.png" alt="Ebenezer Tire Shop" className="h-full w-full object-contain" />
                             </div>
                             <div>
                                 <h2 className="text-3xl font-black uppercase tracking-tight">Ebenezer Tire Shop</h2>

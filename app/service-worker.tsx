@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = "ebenezer-tireshop-v6"
-const urlsToCache = ["/", "/search", "/book", "/services", "/track", "/brand-logo-20260801.png"]
+const CACHE_NAME = "ebenezer-tireshop-v7"
+const urlsToCache = ["/", "/search", "/book", "/services", "/track", "/brand-logo-transparent-20260801.png"]
 
 const sw = self as unknown as ServiceWorkerGlobalScope
 

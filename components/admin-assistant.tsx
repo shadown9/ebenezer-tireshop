@@ -735,9 +735,9 @@ export function AdminAssistant() {
         <section className="flex h-[min(700px,calc(100vh-2rem))] w-[calc(100vw-2rem)] max-w-[440px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl sm:w-[440px]">
           <header className="flex items-center justify-between border-b border-slate-200 bg-slate-950 px-4 py-3 text-white">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-white ring-2 ring-orange-500">
+              <div className="relative size-11 shrink-0 overflow-hidden rounded-md ring-2 ring-orange-500">
                 <Image
-                  src="/brand-logo-20260801.png"
+                  src="/brand-logo-transparent-20260801.png"
                   alt={ASSISTANT_NAME}
                   fill
                   sizes="44px"
@@ -910,8 +910,8 @@ export function AdminAssistant() {
           aria-label={text.open}
           onClick={() => setOpen(true)}
         >
-          <span className="relative size-7 overflow-hidden rounded-full bg-white">
-            <Image src="/brand-logo-20260801.png" alt="" fill sizes="28px" className="object-contain p-0.5" />
+          <span className="relative size-7 overflow-hidden rounded-full">
+            <Image src="/brand-logo-transparent-20260801.png" alt="" fill sizes="28px" className="object-contain p-0.5" />
           </span>
           <span className="hidden sm:inline">{text.title}</span>
           <MessageCircle className="size-4" />

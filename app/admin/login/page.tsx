@@ -93,7 +93,7 @@ export default function AdminLoginPage() {
         <CardContent className="pt-8 pb-8">
           <div className="flex flex-col items-center mb-8">
             <div className="relative w-16 h-16 mb-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
-              <Image src="/brand-logo-20260801.png" alt="Logo" fill className="object-contain p-3" />
+              <Image src="/brand-logo-transparent-20260801.png" alt="Logo" fill className="object-contain p-3" />
             </div>
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheck className="w-5 h-5 text-orange-500" />

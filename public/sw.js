@@ -1,5 +1,5 @@
-const CACHE_NAME = "ebenezer-tireshop-v6"
-const urlsToCache = ["/", "/brand-logo-20260801.png", "/manifest.json", "/icon-192.png", "/icon-512.png"]
+const CACHE_NAME = "ebenezer-tireshop-v7"
+const urlsToCache = ["/", "/brand-logo-transparent-20260801.png", "/manifest.json", "/icon-192.png", "/icon-512.png"]
 
 self.addEventListener("install", (event) => {
   self.skipWaiting()
