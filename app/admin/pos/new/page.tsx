@@ -6,7 +6,7 @@ import { useTires, useServices, addSale } from "@/lib/firebase-hooks"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Trash2, CreditCard, Banknote, Landmark, Settings, PackagePlus, ChevronLeft } from "lucide-react"
+import { Search, Plus, Trash2, CreditCard, Banknote, Landmark, Settings, ReceiptText, ChevronLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface CartItem {
@@ -33,13 +33,10 @@ export default function NewSalePage() {
     const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "transfer" | "mixed">("cash")
     const [cashGiven, setCashGiven] = useState("")
     const [customerName, setCustomerName] = useState("")
-    const [customerPhone, setCustomerPhone] = useState("")
-    const [saleNotes, setSaleNotes] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [manualItem, setManualItem] = useState({
         name: "",
         price: "",
-        costPrice: "",
         quantity: "1",
         type: "part" as "tire" | "service" | "part",
     })
@@ -124,13 +121,12 @@ export default function NewSalePage() {
     const addManualItem = () => {
         const name = manualItem.name.trim()
         const price = Number(manualItem.price)
-        const costPrice = Number(manualItem.costPrice || 0)
         const quantity = Math.max(1, Number.parseInt(manualItem.quantity, 10) || 1)
 
         if (!name || price <= 0) {
             toast({
-                title: "Producto manual incompleto",
-                description: "Agrega nombre y precio para facturarlo.",
+                title: "Línea incompleta",
+                description: "Agrega descripción y precio para facturar.",
                 variant: "destructive",
             })
             return
@@ -142,13 +138,13 @@ export default function NewSalePage() {
                 id: `manual-${crypto.randomUUID()}`,
                 name,
                 price,
-                costPrice,
+                costPrice: 0,
                 quantity,
                 type: manualItem.type,
                 source: "manual",
             },
         ])
-        setManualItem({ name: "", price: "", costPrice: "", quantity: "1", type: "part" })
+        setManualItem({ name: "", price: "", quantity: "1", type: "part" })
     }
 
     const updateQuantity = (id: string, delta: number) => {
@@ -184,7 +180,7 @@ export default function NewSalePage() {
             const saleId = await addSale({
                 sale_date: new Date().toISOString(),
                 customer_name: customerName.trim() || "Cliente General",
-                customer_phone: customerPhone.trim(),
+                customer_phone: "",
                 sale_items: cart.map(item => ({
                     inventory_item_id: item.inventoryItemId,
                     product_name: item.name,
@@ -199,7 +195,6 @@ export default function NewSalePage() {
                 payment_method: paymentMethod,
                 notes: [
                     paymentMethod === "cash" ? `Efectivo recibido: $${cashGiven}` : "",
-                    saleNotes.trim(),
                 ].filter(Boolean).join(" | ")
             })
 
@@ -245,13 +240,13 @@ export default function NewSalePage() {
 
                     <div className="bg-white p-4 rounded-lg shadow-sm border space-y-3">
                         <div className="flex items-center gap-2 text-slate-800 font-bold">
-                            <PackagePlus className="h-5 w-5 text-blue-600" />
-                            Producto manual
+                            <ReceiptText className="h-5 w-5 text-blue-600" />
+                            Línea de factura
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <Input
                                 className="col-span-2"
-                                placeholder="Nombre en factura"
+                                placeholder="Descripción"
                                 value={manualItem.name}
                                 onChange={(e) => setManualItem({ ...manualItem, name: e.target.value })}
                             />
@@ -271,16 +266,8 @@ export default function NewSalePage() {
                                 value={manualItem.quantity}
                                 onChange={(e) => setManualItem({ ...manualItem, quantity: e.target.value })}
                             />
-                            <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="Costo opcional"
-                                value={manualItem.costPrice}
-                                onChange={(e) => setManualItem({ ...manualItem, costPrice: e.target.value })}
-                            />
                             <select
-                                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                                className="col-span-2 h-10 rounded-md border border-input bg-background px-3 text-sm"
                                 value={manualItem.type}
                                 onChange={(e) => setManualItem({ ...manualItem, type: e.target.value as "tire" | "service" | "part" })}
                             >
@@ -291,7 +278,7 @@ export default function NewSalePage() {
                         </div>
                         <Button type="button" variant="outline" className="w-full" onClick={addManualItem}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Agregar producto manual
+                            Agregar a la factura
                         </Button>
                     </div>
 
@@ -405,23 +392,13 @@ export default function NewSalePage() {
                         </div>
                     </div>
 
-                    <div className="space-y-3 bg-white rounded-xl border p-4">
-                        <h3 className="font-bold text-slate-700">Datos del cliente</h3>
+                    <div className="space-y-3">
+                        <h3 className="font-bold text-slate-700">Cliente</h3>
                         <Input
                             placeholder="Nombre del cliente (opcional)"
+                            className="h-12 bg-white"
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
-                        />
-                        <Input
-                            placeholder="Teléfono (opcional)"
-                            inputMode="tel"
-                            value={customerPhone}
-                            onChange={(e) => setCustomerPhone(e.target.value)}
-                        />
-                        <Input
-                            placeholder="Nota para buscar luego (opcional)"
-                            value={saleNotes}
-                            onChange={(e) => setSaleNotes(e.target.value)}
                         />
                     </div>
 
