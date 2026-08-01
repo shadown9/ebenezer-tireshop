@@ -53,7 +53,6 @@ export default function TicketPage() {
                         <div className="text-right">
                             <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Factura</p>
                             <p className="mt-1 text-3xl font-black">#{invoiceNumber}</p>
-                            <p className="mt-2 text-sm text-slate-600">ID interno: {sale.id.slice(0, 8)}</p>
                         </div>
                     </div>
 
@@ -113,7 +112,7 @@ export default function TicketPage() {
 
                     <div className="invoice-thanks mt-8 border-t border-slate-300 pt-4 text-center text-sm text-slate-600">
                         <p className="font-bold text-slate-900">Gracias por su compra.</p>
-                        <p>Conserve esta factura: #{invoiceNumber}</p>
+                        <p>Use este número para cualquier reclamo: #{invoiceNumber}</p>
                         <p>No se aceptan devoluciones después de 30 días.</p>
                     </div>
 
