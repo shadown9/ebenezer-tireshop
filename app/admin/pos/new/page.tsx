@@ -184,7 +184,7 @@ export default function NewSalePage() {
             const saleId = await addSale({
                 sale_date: new Date().toISOString(),
                 customer_name: customerName.trim() || "Cliente General",
-                customer_phone: customerPhone.trim() || undefined,
+                customer_phone: customerPhone.trim(),
                 sale_items: cart.map(item => ({
                     inventory_item_id: item.inventoryItemId,
                     product_name: item.name,
@@ -200,7 +200,7 @@ export default function NewSalePage() {
                 notes: [
                     paymentMethod === "cash" ? `Efectivo recibido: $${cashGiven}` : "",
                     saleNotes.trim(),
-                ].filter(Boolean).join(" | ") || undefined
+                ].filter(Boolean).join(" | ")
             })
 
             toast({ title: "Venta Completada", description: "La factura quedó registrada correctamente." })

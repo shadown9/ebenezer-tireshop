@@ -4,7 +4,23 @@ import { useEffect, useState } from "react"
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, onSnapshot, where, getDocs, runTransaction, setDoc } from "firebase/firestore"
 import { ref, deleteObject } from "firebase/storage"
 import { db, storage } from "./firebase"
-import type { Tire, Appointment, Service, CMSContent } from "./types"
+import type { Tire, Appointment, Service, CMSContent, Sale } from "./types"
+
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefined(item)) as T
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, entry]) =>
+        entry === undefined ? [] : [[key, stripUndefined(entry)]],
+      ),
+    ) as T
+  }
+
+  return value
+}
 
 // Hook to get tires with real-time updates
 export function useTires() {
@@ -408,11 +424,14 @@ function generateTicketNumber(): string {
 
 // Add a new sale
 export async function addSale(sale: Omit<Sale, "id" | "ticket_number" | "created_at">) {
-  const saleData: Omit<Sale, "id"> = {
+  const saleData = stripUndefined<Omit<Sale, "id">>({
     ...sale,
+    customer_name: sale.customer_name?.trim() || "Cliente General",
+    customer_phone: sale.customer_phone?.trim() || "",
+    notes: sale.notes?.trim() || "",
     ticket_number: generateTicketNumber(),
     created_at: new Date().toISOString(),
-  }
+  })
 
   const saleRef = doc(collection(db, "sales"))
   const inventoryItems = sale.sale_items.filter((item) => item.source === "inventory" && item.inventory_item_id)

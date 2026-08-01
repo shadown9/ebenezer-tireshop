@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app"
-import { getFirestore } from "firebase/firestore"
+import { getFirestore, initializeFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
 
 const firebaseConfig = {
@@ -14,7 +14,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
-const db = getFirestore(app)
+const db = (() => {
+  try {
+    return initializeFirestore(app, { ignoreUndefinedProperties: true })
+  } catch {
+    return getFirestore(app)
+  }
+})()
 const storage = getStorage(app)
 
 export { app, db, storage }
