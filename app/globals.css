@@ -168,3 +168,47 @@
     background-clip: text;
   }
 }
+
+.invoice-print-page {
+  max-width: 8.5in;
+  padding: 0.45in;
+}
+
+.invoice-print-content {
+  min-height: 9.8in;
+}
+
+@media print {
+  @page {
+    size: letter;
+    margin: 0.35in;
+  }
+
+  html,
+  body {
+    background: white !important;
+  }
+
+  .invoice-print-page {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+
+  .invoice-print-content {
+    min-height: auto;
+    font-size: 13pt;
+    line-height: 1.25;
+  }
+
+  .invoice-row,
+  .invoice-footer-block,
+  .invoice-thanks {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .invoice-items-table {
+    break-inside: auto;
+  }
+}

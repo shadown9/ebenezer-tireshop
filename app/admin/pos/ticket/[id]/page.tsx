@@ -18,9 +18,16 @@ export default function TicketPage() {
 
     const invoiceNumber = sale.ticket_number || sale.id.slice(0, 6)
 
+    const paymentLabel = {
+        cash: "Efectivo",
+        card: "Tarjeta",
+        transfer: "Transferencia",
+        mixed: "Mixto",
+    }[sale.payment_method] || sale.payment_method
+
     return (
         <div className="min-h-screen bg-slate-100 p-4 print:bg-white print:p-0">
-            <div className="max-w-sm mx-auto bg-white shadow-lg p-6 rounded-lg print:shadow-none print:max-w-none print:rounded-none">
+            <div className="invoice-print-page mx-auto bg-white shadow-lg rounded-lg print:shadow-none print:rounded-none">
 
                 {/* Header (Hidden in Print) */}
                 <div className="flex justify-between items-center mb-6 print:hidden">
@@ -32,75 +39,82 @@ export default function TicketPage() {
                     </Button>
                 </div>
 
-                {/* Receipt Content */}
-                <div className="text-center font-mono text-sm leading-relaxed">
-                    <h2 className="font-bold text-xl mb-1 uppercase">Ebenezer Tire Shop</h2>
-                    <p>507 Hawthorne Ave</p>
-                    <p>Newark, New Jersey 07112</p>
-                    <p className="mb-4">Tel: (973) 896-8575</p>
-
-                    <div className="border border-slate-900 rounded-md p-2 my-4">
-                        <p className="text-[10px] uppercase tracking-widest text-slate-500">Factura</p>
-                        <p className="text-xl font-black">#{invoiceNumber}</p>
-                    </div>
-
-                    <div className="border-b border-dashed border-slate-300 my-4"></div>
-
-                    <div className="flex justify-between text-xs text-slate-500 mb-4">
-                        <span>{format(new Date(sale.created_at || sale.sale_date), "dd/MM/yyyy h:mm a")}</span>
-                        <span>ID interno {sale.id.slice(0, 8)}</span>
-                    </div>
-
-                    <div className="text-left text-xs mb-4 space-y-1">
-                        <div className="flex justify-between gap-3">
-                            <span className="text-slate-500">Cliente:</span>
-                            <span className="font-semibold text-right">{sale.customer_name || "Cliente General"}</span>
+                {/* Invoice Content */}
+                <div className="invoice-print-content text-slate-950">
+                    <div className="flex items-start justify-between gap-8 border-b-2 border-slate-900 pb-5">
+                        <div>
+                            <h2 className="text-3xl font-black uppercase tracking-tight">Ebenezer Tire Shop</h2>
+                            <div className="mt-2 text-base leading-relaxed text-slate-700">
+                                <p>507 Hawthorne Ave</p>
+                                <p>Newark, New Jersey 07112</p>
+                                <p>Tel: (973) 896-8575</p>
+                            </div>
                         </div>
-                        {sale.customer_phone && (
-                            <div className="flex justify-between gap-3">
-                                <span className="text-slate-500">Teléfono:</span>
-                                <span className="font-semibold text-right">{sale.customer_phone}</span>
-                            </div>
-                        )}
+                        <div className="text-right">
+                            <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Factura</p>
+                            <p className="mt-1 text-3xl font-black">#{invoiceNumber}</p>
+                            <p className="mt-2 text-sm text-slate-600">ID interno: {sale.id.slice(0, 8)}</p>
+                        </div>
                     </div>
 
-                    <div className="space-y-2 mb-4 text-left">
-                        {sale.sale_items.map((item: any, i: number) => (
-                            <div key={i}>
-                                <div className="flex justify-between gap-3">
-                                    <span>{item.quantity}x {item.product_name}</span>
-                                    <span className="flex-shrink-0">${(Number(item.total_price)).toFixed(2)}</span>
-                                </div>
-                                <div className="text-[10px] text-slate-500 pl-3">
-                                    ${Number(item.unit_price || 0).toFixed(2)} c/u
-                                </div>
-                            </div>
-                        ))}
+                    <div className="grid grid-cols-2 gap-6 border-b border-slate-300 py-5 text-base">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Cliente</p>
+                            <p className="mt-1 text-lg font-bold">{sale.customer_name || "Cliente General"}</p>
+                            {sale.customer_phone && <p className="text-slate-700">{sale.customer_phone}</p>}
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Fecha</p>
+                            <p className="mt-1 text-lg font-bold">
+                                {format(new Date(sale.created_at || sale.sale_date), "dd/MM/yyyy")}
+                            </p>
+                            <p className="text-slate-700">{format(new Date(sale.created_at || sale.sale_date), "h:mm a")}</p>
+                        </div>
                     </div>
 
-                    <div className="border-b border-dashed border-slate-300 my-4"></div>
+                    <table className="invoice-items-table my-5 w-full border-collapse text-left text-base">
+                        <thead>
+                            <tr className="border-b-2 border-slate-900 text-xs uppercase tracking-wide text-slate-500">
+                                <th className="py-3 pr-3">Descripción</th>
+                                <th className="w-20 px-3 text-center">Cant.</th>
+                                <th className="w-28 px-3 text-right">Precio</th>
+                                <th className="w-32 pl-3 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sale.sale_items.map((item: any, i: number) => (
+                                <tr key={i} className="invoice-row border-b border-slate-200">
+                                    <td className="py-3 pr-3 font-semibold">{item.product_name}</td>
+                                    <td className="px-3 py-3 text-center">{item.quantity}</td>
+                                    <td className="px-3 py-3 text-right">${Number(item.unit_price || 0).toFixed(2)}</td>
+                                    <td className="py-3 pl-3 text-right font-bold">${Number(item.total_price).toFixed(2)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
 
-                    <div className="flex justify-between font-bold text-lg">
-                        <span>TOTAL</span>
-                        <span>${Number(sale.total_amount).toFixed(2)}</span>
-                    </div>
-
-                    <div className="mt-2 text-xs flex justify-between uppercase">
-                        <span>Método de Pago:</span>
-                        <span>{sale.payment_method}</span>
+                    <div className="invoice-footer-block ml-auto w-full max-w-sm space-y-3">
+                        <div className="flex justify-between text-base">
+                            <span className="font-semibold text-slate-600">Método de pago</span>
+                            <span className="font-bold">{paymentLabel}</span>
+                        </div>
+                        <div className="flex justify-between border-t-2 border-slate-900 pt-3 text-3xl font-black">
+                            <span>TOTAL</span>
+                            <span>${Number(sale.total_amount).toFixed(2)}</span>
+                        </div>
                     </div>
 
                     {sale.notes && (
-                        <div className="mt-4 border-t border-dashed border-slate-300 pt-3 text-left text-xs">
-                            <p className="font-bold uppercase mb-1">Notas</p>
-                            <p>{sale.notes}</p>
+                        <div className="invoice-row mt-5 rounded-lg border border-slate-300 p-4 text-base">
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Notas</p>
+                            <p className="mt-1">{sale.notes}</p>
                         </div>
                     )}
 
-                    <div className="mt-8 text-center text-xs text-slate-400">
-                        <p>¡Gracias por su compra!</p>
+                    <div className="invoice-thanks mt-8 border-t border-slate-300 pt-4 text-center text-sm text-slate-600">
+                        <p className="font-bold text-slate-900">Gracias por su compra.</p>
                         <p>Conserve esta factura: #{invoiceNumber}</p>
-                        <p>No se aceptan devoluciones después de 30 días</p>
+                        <p>No se aceptan devoluciones después de 30 días.</p>
                     </div>
 
                 </div>
