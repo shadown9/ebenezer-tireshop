@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   description: "Complete tire shop and automotive service at 507 Hawthone Ave, Newark, NJ 01772. Find tires, book services, and get expert care for your vehicle.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/icon-512.png",
+    apple: "/apple-icon.png",
   },
   appleWebApp: {
     capable: true,
@@ -41,7 +41,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Ebenezer" />
-        <link rel="apple-touch-icon" href="/logo.png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
       </head>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
         <RegisterServiceWorker />

@@ -737,11 +737,11 @@ export function AdminAssistant() {
             <div className="flex min-w-0 items-center gap-3">
               <div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-white ring-2 ring-orange-500">
                 <Image
-                  src="/logo.png"
+                  src="/brand-logo-20260801.png"
                   alt={ASSISTANT_NAME}
                   fill
                   sizes="44px"
-                  className="object-cover"
+                  className="object-contain p-0.5"
                 />
               </div>
               <div className="min-w-0">
@@ -911,7 +911,7 @@ export function AdminAssistant() {
           onClick={() => setOpen(true)}
         >
           <span className="relative size-7 overflow-hidden rounded-full bg-white">
-            <Image src="/logo.png" alt="" fill sizes="28px" className="object-cover" />
+            <Image src="/brand-logo-20260801.png" alt="" fill sizes="28px" className="object-contain p-0.5" />
           </span>
           <span className="hidden sm:inline">{text.title}</span>
           <MessageCircle className="size-4" />

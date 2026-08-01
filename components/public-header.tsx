@@ -59,7 +59,7 @@ export function PublicHeader() {
             className="flex items-center gap-3 group cursor-pointer hover:opacity-90 transition-opacity"
           >
             <div className="relative w-12 h-12 sm:w-16 sm:h-16 group-hover:scale-105 transition-all duration-300">
-              <Image src="/logo.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" priority />
+              <Image src="/brand-logo-20260801.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" priority />
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gradient">Ebenezer Tireshop</h1>
@@ -118,7 +118,7 @@ export function PublicHeader() {
                 <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 px-6 py-6 border-b border-primary-foreground/10">
                   <div className="flex items-center gap-3">
                     <div className="relative w-12 h-12">
-                      <Image src="/logo.png" alt="Logo" fill className="object-contain" />
+                      <Image src="/brand-logo-20260801.png" alt="Logo" fill className="object-contain" />
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-primary-foreground">{t("menu")}</h2>

@@ -237,7 +237,7 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative w-12 h-12">
-                  <Image src="/logo.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" />
+                  <Image src="/brand-logo-20260801.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" />
                 </div>
                 <span className="text-2xl font-bold">{businessInfo?.business_name || "Ebenezer Tireshop"}</span>
               </div>

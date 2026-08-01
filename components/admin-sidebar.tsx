@@ -143,7 +143,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
       <div className="p-6 bg-gradient-to-br from-orange-600 to-orange-500 border-b border-orange-400">
         <Link href="/admin" className="flex items-center gap-3" onClick={onNavigate}>
           <div className="relative w-10 h-10 bg-white rounded-lg p-1.5">
-            <Image src="/logo.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" />
+            <Image src="/brand-logo-20260801.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white">Ebenezer Tireshop</h1>
@@ -285,7 +285,7 @@ export function AdminSidebar() {
               </Button>
             )}
             <div className="relative w-6 h-6">
-              <Image src="/logo.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" />
+              <Image src="/brand-logo-20260801.png" alt="Ebenezer Tireshop Logo" fill className="object-contain" />
             </div>
             <span className="font-bold text-gray-900">Ebenezer Tireshop</span>
           </div>
