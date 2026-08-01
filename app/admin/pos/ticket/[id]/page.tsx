@@ -42,12 +42,17 @@ export default function TicketPage() {
                 {/* Invoice Content */}
                 <div className="invoice-print-content text-slate-950">
                     <div className="flex items-start justify-between gap-8 border-b-2 border-slate-900 pb-5">
-                        <div>
-                            <h2 className="text-3xl font-black uppercase tracking-tight">Ebenezer Tire Shop</h2>
-                            <div className="mt-2 text-base leading-relaxed text-slate-700">
-                                <p>507 Hawthorne Ave</p>
-                                <p>Newark, New Jersey 07112</p>
-                                <p>Tel: (973) 896-8575</p>
+                        <div className="flex items-start gap-4">
+                            <div className="invoice-logo-wrap flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white p-1">
+                                <img src="/logo.png" alt="Ebenezer Tire Shop" className="h-full w-full object-contain" />
+                            </div>
+                            <div>
+                                <h2 className="text-3xl font-black uppercase tracking-tight">Ebenezer Tire Shop</h2>
+                                <div className="mt-2 text-base leading-relaxed text-slate-700">
+                                    <p>507 Hawthorne Ave</p>
+                                    <p>Newark, New Jersey 07112</p>
+                                    <p>Tel: (973) 896-8575</p>
+                                </div>
                             </div>
                         </div>
                         <div className="text-right">

@@ -227,6 +227,11 @@
     line-height: 1.05;
   }
 
+  .invoice-logo-wrap {
+    height: 0.8in !important;
+    width: 1in !important;
+  }
+
   .invoice-print-content table {
     margin-top: 0.2in;
     margin-bottom: 0.2in;
