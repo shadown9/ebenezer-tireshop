@@ -40,6 +40,7 @@ export default function NewSalePage() {
         quantity: "1",
         type: "part" as "tire" | "service" | "part",
     })
+    const invoiceLineFieldClass = "bg-white transition-all focus-visible:border-orange-500 focus-visible:ring-orange-500/35 focus-visible:ring-[4px] focus-visible:shadow-[0_0_0_1px_rgba(249,115,22,0.55)]"
 
     const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 
@@ -245,12 +246,13 @@ export default function NewSalePage() {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <Input
-                                className="col-span-2"
+                                className={`col-span-2 h-11 ${invoiceLineFieldClass}`}
                                 placeholder="Descripción"
                                 value={manualItem.name}
                                 onChange={(e) => setManualItem({ ...manualItem, name: e.target.value })}
                             />
                             <Input
+                                className={`h-11 ${invoiceLineFieldClass}`}
                                 type="number"
                                 min="0"
                                 step="0.01"
@@ -259,6 +261,7 @@ export default function NewSalePage() {
                                 onChange={(e) => setManualItem({ ...manualItem, price: e.target.value })}
                             />
                             <Input
+                                className={`h-11 ${invoiceLineFieldClass}`}
                                 type="number"
                                 min="1"
                                 step="1"
@@ -267,7 +270,7 @@ export default function NewSalePage() {
                                 onChange={(e) => setManualItem({ ...manualItem, quantity: e.target.value })}
                             />
                             <select
-                                className="col-span-2 h-10 rounded-md border border-input bg-background px-3 text-sm"
+                                className={`col-span-2 h-11 rounded-md border border-input px-3 text-sm outline-none ${invoiceLineFieldClass}`}
                                 value={manualItem.type}
                                 onChange={(e) => setManualItem({ ...manualItem, type: e.target.value as "tire" | "service" | "part" })}
                             >
