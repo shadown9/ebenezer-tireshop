@@ -26,7 +26,7 @@ export default function TicketPage() {
     }[sale.payment_method] || sale.payment_method
 
     return (
-        <div className="min-h-screen bg-slate-100 p-4 print:bg-white print:p-0">
+        <div className="invoice-print-root min-h-screen bg-slate-100 p-4 print:bg-white print:p-0 print:min-h-0">
             <div className="invoice-print-page mx-auto bg-white shadow-lg rounded-lg print:shadow-none print:rounded-none">
 
                 {/* Header (Hidden in Print) */}

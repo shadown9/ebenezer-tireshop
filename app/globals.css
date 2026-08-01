@@ -181,24 +181,55 @@
 @media print {
   @page {
     size: letter;
-    margin: 0.35in;
+    margin: 0.3in;
   }
 
   html,
   body {
     background: white !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  body {
+    margin: 0 !important;
+  }
+
+  .invoice-print-root {
+    display: block !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
   }
 
   .invoice-print-page {
     width: 100%;
     max-width: none;
+    min-height: 0 !important;
+    height: auto !important;
     padding: 0;
+    overflow: visible !important;
   }
 
   .invoice-print-content {
     min-height: auto;
-    font-size: 13pt;
-    line-height: 1.25;
+    height: auto !important;
+    font-size: 12pt;
+    line-height: 1.2;
+    overflow: visible !important;
+  }
+
+  .invoice-print-content h2 {
+    font-size: 24pt;
+    line-height: 1.05;
+  }
+
+  .invoice-print-content table {
+    margin-top: 0.2in;
+    margin-bottom: 0.2in;
   }
 
   .invoice-row,
