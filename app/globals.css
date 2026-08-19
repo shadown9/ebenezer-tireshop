@@ -181,7 +181,7 @@
 @media print {
   @page {
     size: letter;
-    margin: 0.3in;
+    margin: 0.2in;
   }
 
   html,
@@ -194,6 +194,14 @@
 
   body {
     margin: 0 !important;
+  }
+
+  main:has(.invoice-print-root) {
+    display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
   }
 
   .invoice-print-root {
@@ -217,13 +225,14 @@
   .invoice-print-content {
     min-height: auto;
     height: auto !important;
-    font-size: 12pt;
-    line-height: 1.2;
+    zoom: var(--invoice-print-zoom, 1);
+    font-size: 10.5pt;
+    line-height: 1.12;
     overflow: visible !important;
   }
 
   .invoice-print-content h2 {
-    font-size: 24pt;
+    font-size: 22pt;
     line-height: 1.05;
   }
 
@@ -233,8 +242,18 @@
   }
 
   .invoice-print-content table {
-    margin-top: 0.2in;
-    margin-bottom: 0.2in;
+    margin-top: 0.12in;
+    margin-bottom: 0.12in;
+  }
+
+  .invoice-print-content .invoice-items-table th,
+  .invoice-print-content .invoice-items-table td {
+    padding-top: 0.09in !important;
+    padding-bottom: 0.09in !important;
+  }
+
+  .invoice-print-content .invoice-thanks {
+    margin-top: 0.22in !important;
   }
 
   .invoice-row,
@@ -246,5 +265,11 @@
 
   .invoice-items-table {
     break-inside: auto;
+  }
+
+  .invoice-print-page,
+  .invoice-print-root {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
   }
 }

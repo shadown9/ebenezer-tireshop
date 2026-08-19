@@ -1,5 +1,6 @@
 "use client"
 
+import type { CSSProperties } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { format } from "date-fns"
 import { Printer, ChevronLeft } from "lucide-react"
@@ -17,6 +18,9 @@ export default function TicketPage() {
     if (!sale) return <div className="p-10 text-center">Ticket no encontrado</div>
 
     const invoiceNumber = sale.ticket_number || sale.id.slice(0, 6)
+    const itemCount = sale.sale_items.length
+    // Keep the customer copy on one Letter page, compacting only when the invoice has many lines.
+    const printZoom = Math.max(0.25, Math.min(1, 1 - Math.max(0, itemCount - 4) * 0.065))
 
     const paymentLabel = {
         cash: "Efectivo",
@@ -40,7 +44,10 @@ export default function TicketPage() {
                 </div>
 
                 {/* Invoice Content */}
-                <div className="invoice-print-content text-slate-950">
+                <div
+                    className="invoice-print-content text-slate-950"
+                    style={{ "--invoice-print-zoom": printZoom } as CSSProperties}
+                >
                     <div className="flex items-start justify-between gap-8 border-b-2 border-slate-900 pb-5">
                         <div className="flex items-start gap-4">
                             <div className="invoice-logo-wrap flex h-24 w-36 shrink-0 items-center justify-center overflow-hidden">
