@@ -6,6 +6,7 @@ import { format } from "date-fns"
 import { Printer, ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSales } from "@/lib/firebase-hooks"
+import { getSalePaymentBreakdown } from "@/lib/payment-breakdown"
 
 export default function TicketPage() {
     const router = useRouter()
@@ -28,6 +29,12 @@ export default function TicketPage() {
         transfer: "Transferencia",
         mixed: "Mixto",
     }[sale.payment_method] || sale.payment_method
+    const paymentBreakdown = getSalePaymentBreakdown(sale)
+    const paymentDetails = [
+        paymentBreakdown.cash > 0 && ["Efectivo", paymentBreakdown.cash],
+        paymentBreakdown.card > 0 && ["Tarjeta", paymentBreakdown.card],
+        paymentBreakdown.transfer > 0 && ["Transferencia", paymentBreakdown.transfer],
+    ].filter(Boolean) as [string, number][]
 
     return (
         <div className="invoice-print-root min-h-screen bg-slate-100 p-4 print:bg-white print:p-0 print:min-h-0">
@@ -105,9 +112,17 @@ export default function TicketPage() {
                     </table>
 
                     <div className="invoice-footer-block ml-auto w-full max-w-sm space-y-3">
-                        <div className="flex justify-between text-base">
-                            <span className="font-semibold text-slate-600">Método de pago</span>
-                            <span className="font-bold">{paymentLabel}</span>
+                        <div className="space-y-1 text-base">
+                            <div className="flex justify-between">
+                                <span className="font-semibold text-slate-600">Método de pago</span>
+                                <span className="font-bold">{paymentLabel}</span>
+                            </div>
+                            {sale.payment_method === "mixed" && paymentDetails.map(([method, amount]) => (
+                                <div key={method} className="flex justify-between text-sm text-slate-600">
+                                    <span>{method}</span>
+                                    <span className="font-semibold">${amount.toFixed(2)}</span>
+                                </div>
+                            ))}
                         </div>
                         <div className="flex justify-between border-t-2 border-slate-900 pt-3 text-3xl font-black">
                             <span>TOTAL</span>

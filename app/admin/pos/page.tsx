@@ -8,6 +8,7 @@ import { ShoppingCart, ClipboardList, Banknote, TrendingUp, BarChart3 } from "lu
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useSales } from "@/lib/firebase-hooks"
+import { getSalePaymentBreakdown } from "@/lib/payment-breakdown"
 
 interface LoggedSale {
     id: string
@@ -58,12 +59,12 @@ export default function POSDashboard() {
 
         todaysSalesData.forEach(sale => {
             const amount = Number(sale.total_amount)
+            const breakdown = getSalePaymentBreakdown(sale)
             newStats.total += amount
-            const method = (sale.payment_method || 'cash').toLowerCase()
-            if (method === 'cash') newStats.cash += amount
-            else if (method === 'card' || method === 'tarjeta') newStats.card += amount
-            else if (method === 'transfer' || method === 'transferencia') newStats.transfer += amount
-            else newStats.mixed += amount
+            newStats.cash += breakdown.cash
+            newStats.card += breakdown.card
+            newStats.transfer += breakdown.transfer
+            if (sale.payment_method === "mixed" && !sale.payment_breakdown) newStats.mixed += amount
         })
 
         setStats(newStats)

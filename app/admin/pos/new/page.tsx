@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, Plus, Trash2, CreditCard, Banknote, Landmark, Settings, ReceiptText, ChevronLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import type { PaymentBreakdown } from "@/lib/payment-breakdown"
 
 interface CartItem {
     id: string
@@ -32,6 +33,7 @@ export default function NewSalePage() {
     const [cart, setCart] = useState<CartItem[]>([])
     const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "transfer" | "mixed">("cash")
     const [cashGiven, setCashGiven] = useState("")
+    const [mixedPayments, setMixedPayments] = useState<Record<keyof Required<PaymentBreakdown>, string>>({ cash: "", card: "", transfer: "" })
     const [customerName, setCustomerName] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [manualItem, setManualItem] = useState({
@@ -43,13 +45,22 @@ export default function NewSalePage() {
     const invoiceLineFieldClass = "bg-white transition-all focus-visible:border-orange-500 focus-visible:ring-orange-500/35 focus-visible:ring-[4px] focus-visible:shadow-[0_0_0_1px_rgba(249,115,22,0.55)]"
 
     const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    const mixedBreakdown = {
+        cash: Math.max(0, Number(mixedPayments.cash) || 0),
+        card: Math.max(0, Number(mixedPayments.card) || 0),
+        transfer: Math.max(0, Number(mixedPayments.transfer) || 0),
+    }
+    const mixedTotal = mixedBreakdown.cash + mixedBreakdown.card + mixedBreakdown.transfer
+    const mixedRemaining = cartTotal - mixedTotal
+    const mixedMethodCount = Object.values(mixedBreakdown).filter((amount) => amount > 0).length
+    const hasValidMixedPayment = Math.abs(mixedRemaining) < 0.005 && mixedMethodCount >= 2
 
     // Auto-fill cash amount when entering checkout or total changes
     useEffect(() => {
-        if (step === 2) {
+        if (step === 2 && paymentMethod === "cash") {
             setCashGiven(cartTotal.toFixed(2))
         }
-    }, [step, cartTotal])
+    }, [step, cartTotal, paymentMethod])
 
     // Combined items from Tires and Services
     const allItems = [
@@ -176,6 +187,15 @@ export default function NewSalePage() {
             return
         }
 
+        if (paymentMethod === "mixed" && !hasValidMixedPayment) {
+            toast({
+                title: "Pago mixto incompleto",
+                description: "La suma de efectivo, tarjeta y transferencia debe ser igual al total y usar al menos dos métodos.",
+                variant: "destructive",
+            })
+            return
+        }
+
         setIsSubmitting(true)
         try {
             const saleId = await addSale({
@@ -194,6 +214,9 @@ export default function NewSalePage() {
                 })),
                 total_amount: cartTotal,
                 payment_method: paymentMethod,
+                payment_breakdown: paymentMethod === "mixed"
+                    ? mixedBreakdown
+                    : { [paymentMethod]: cartTotal },
                 notes: [
                     paymentMethod === "cash" ? `Efectivo recibido: $${cashGiven}` : "",
                 ].filter(Boolean).join(" | ")
@@ -430,7 +453,10 @@ export default function NewSalePage() {
                                 <span className="font-bold">Transferencia</span>
                             </button>
                             <button
-                                onClick={() => setPaymentMethod("mixed")}
+                                onClick={() => {
+                                    setPaymentMethod("mixed")
+                                    setMixedPayments({ cash: "", card: "", transfer: "" })
+                                }}
                                 className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${paymentMethod === 'mixed' ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-slate-200 bg-white text-slate-600'}`}
                             >
                                 <Settings className="h-6 w-6" />
@@ -460,11 +486,54 @@ export default function NewSalePage() {
                         </div>
                     )}
 
+                    {paymentMethod === "mixed" && (
+                        <div className="space-y-3 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="font-bold text-slate-800">Distribución del pago</h3>
+                                    <p className="text-sm text-slate-600">Indica cuánto entró por cada método.</p>
+                                </div>
+                                <span className={`text-sm font-bold ${hasValidMixedPayment ? "text-green-700" : "text-orange-700"}`}>
+                                    {hasValidMixedPayment ? "Total completo" : `Faltan $${Math.max(0, mixedRemaining).toFixed(2)}`}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                {([
+                                    ["cash", "Efectivo"],
+                                    ["card", "Tarjeta"],
+                                    ["transfer", "Transferencia"],
+                                ] as const).map(([method, label]) => (
+                                    <div key={method} className="space-y-1">
+                                        <label className="text-sm font-semibold text-slate-700" htmlFor={`mixed-${method}`}>{label}</label>
+                                        <Input
+                                            id={`mixed-${method}`}
+                                            type="number"
+                                            inputMode="decimal"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="$0.00"
+                                            className="h-12 bg-white text-right font-bold"
+                                            value={mixedPayments[method]}
+                                            onChange={(event) => setMixedPayments((current) => ({ ...current, [method]: event.target.value }))}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className={`flex justify-between border-t pt-3 text-sm font-bold ${hasValidMixedPayment ? "text-green-700" : "text-slate-700"}`}>
+                                <span>Registrado: ${mixedTotal.toFixed(2)}</span>
+                                <span>Total: ${cartTotal.toFixed(2)}</span>
+                            </div>
+                            {!hasValidMixedPayment && mixedTotal > cartTotal && (
+                                <p className="text-sm font-semibold text-red-600">El reparto excede el total por ${Math.abs(mixedRemaining).toFixed(2)}.</p>
+                            )}
+                        </div>
+                    )}
+
                     <Button
                         className="w-full h-16 text-xl font-bold mt-4 shadow-xl"
                         size="lg"
                         onClick={handleCheckout}
-                        disabled={isSubmitting || (paymentMethod === "cash" && Number(cashGiven) < cartTotal)}
+                        disabled={isSubmitting || (paymentMethod === "cash" && Number(cashGiven) < cartTotal) || (paymentMethod === "mixed" && !hasValidMixedPayment)}
                     >
                         {isSubmitting ? "Procesando..." : "CONFIRMAR VENTA"}
                     </Button>

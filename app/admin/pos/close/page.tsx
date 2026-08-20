@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useSales } from "@/lib/firebase-hooks"
 import { useAdminText } from "@/lib/admin-translations"
+import { getSalePaymentBreakdown } from "@/lib/payment-breakdown"
 
 export default function POSClosePage() {
     const router = useRouter()
@@ -84,13 +85,11 @@ export default function POSClosePage() {
 
             todaysSales.forEach((sale: any) => {
                 const method = (sale.payment_method || 'cash').toLowerCase().trim() as keyof typeof byMethod
-                // Safety check for method
-                if (byMethod[method] !== undefined) {
-                    byMethod[method] += Number(sale.total_amount)
-                } else {
-                    // Default to mixed if unknown
-                    byMethod.mixed += Number(sale.total_amount)
-                }
+                const breakdown = getSalePaymentBreakdown(sale)
+                byMethod.cash += breakdown.cash
+                byMethod.card += breakdown.card
+                byMethod.transfer += breakdown.transfer
+                if (method === "mixed" && !sale.payment_breakdown) byMethod.mixed += Number(sale.total_amount)
 
                 // Cost Calculation and collect sold items details
                 if (sale.sale_items && Array.isArray(sale.sale_items)) {

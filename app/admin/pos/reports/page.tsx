@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useSales } from "@/lib/firebase-hooks"
+import { getSalePaymentBreakdown } from "@/lib/payment-breakdown"
 import { useAdminText } from "@/lib/admin-translations"
 
 type PeriodMode = "day" | "week" | "month" | "year" | "custom"
@@ -131,10 +132,13 @@ export default function POSReportsPage() {
         let inventoryRevenue = 0
 
         periodSales.forEach((sale) => {
-            const method = normalizeMethod(sale.payment_method) as keyof typeof byMethod
             const saleTotal = Number(sale.total_amount || 0)
             grossSales += saleTotal
-            byMethod[method] += saleTotal
+            const breakdown = getSalePaymentBreakdown(sale)
+            byMethod.cash += breakdown.cash
+            byMethod.card += breakdown.card
+            byMethod.transfer += breakdown.transfer
+            if (normalizeMethod(sale.payment_method) === "mixed" && !sale.payment_breakdown) byMethod.mixed += saleTotal
 
             ;(sale.sale_items || []).forEach((item) => {
                 const quantity = Number(item.quantity || 0)

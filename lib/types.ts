@@ -177,6 +177,11 @@ export interface Sale {
   sale_items: SaleItem[]
   total_amount: number
   payment_method: "cash" | "card" | "transfer" | "mixed"
+  payment_breakdown?: {
+    cash?: number
+    card?: number
+    transfer?: number
+  }
   notes?: string
   created_at: string
   created_by?: string

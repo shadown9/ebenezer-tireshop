@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { useAdminText } from "@/lib/admin-translations"
+import { getSalePaymentBreakdown } from "@/lib/payment-breakdown"
 
 interface CashMovement {
     id: number
@@ -54,8 +55,8 @@ export default function CashControlPage() {
             // Calculate Cash from Sales (Today)
             const today = new Date().toISOString().split("T")[0]
             const cashSales = sales
-                .filter((s: any) => s.sale_date.startsWith(today) && s.payment_method === 'cash')
-                .reduce((sum: number, s: any) => sum + Number(s.total_amount), 0)
+                .filter((s: any) => s.sale_date.startsWith(today))
+                .reduce((sum: number, s: any) => sum + getSalePaymentBreakdown(s).cash, 0)
 
             // Fetch Movements
             const cashRes = await fetch("/api/cash")
